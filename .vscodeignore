@@ -1,7 +1,11 @@
 .vscode/**
+.claude/**
+mockups/**
 src/**
 **/*.ts
 **/*.map
+**/.DS_Store
+*.vsix
 tsconfig.json
 .gitignore
 example.md
