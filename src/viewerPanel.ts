@@ -134,6 +134,10 @@ function originalDiffUri(token: string, name: string): vscode.Uri {
 }
 
 export class CommentViewerPanel {
+  static hasPanel(uri: vscode.Uri): boolean {
+    return panels.has(uri.toString());
+  }
+
   static createOrShow(
     context: vscode.ExtensionContext,
     document: vscode.TextDocument | undefined,

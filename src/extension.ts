@@ -20,6 +20,13 @@ export function activate(context: vscode.ExtensionContext) {
           'Markdown Comments: open the Interactive Comments View to address comments with AI.'
         );
       }
+    }),
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      if (!editor || editor.document.languageId !== 'markdown') return;
+      const cfg = vscode.workspace.getConfiguration('markdownComments');
+      if (!cfg.get<boolean>('openInViewerByDefault', false)) return;
+      if (CommentViewerPanel.hasPanel(editor.document.uri)) return;
+      CommentViewerPanel.openReplacing(context, editor);
     })
   );
 

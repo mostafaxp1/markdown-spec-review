@@ -158,6 +158,11 @@
           "default": true,
           "description": "Automatically save the Markdown file after adding, editing, or removing a comment. Untitled (never-saved) files are left for you to save manually."
         },
+        "markdownComments.openInViewerByDefault": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically open Markdown files in the Interactive Comments View instead of the text editor."
+        },
         "markdownComments.viewer.fontSize": {
           "type": "number",
           "default": 15,
