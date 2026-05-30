@@ -431,10 +431,17 @@ mark.mdc-search-hit-current {
   text-align: center;
   font-size: 0.82em;
   color: rgba(120, 90, 0, 0.85);
-  background: rgba(255, 200, 0, 0.45);
+  background: #FBE7AB;
   border-radius: 50%;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   pointer-events: none;
+}
+
+
+body.mdc-theme-dark .mdc-has-draft::before,
+body.mdc-theme-dark-modern .mdc-has-draft::before {
+  color: rgba(255, 213, 0, 0.95);
+  background: #4A4127;
 }
 
 /* ---- inline edit / delete controls on each bubble ----------------------- */
