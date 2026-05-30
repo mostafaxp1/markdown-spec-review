@@ -1423,10 +1423,10 @@
   // Show the bar when there are comments to act on (or a run / review is in
   // progress), and never over the docked add/edit editor (same bottom strip).
   function updateAiBarVisibility() {
-    const hasComments = !!content.querySelector('.mdc-comment');
+    const hasUnresolved = !!content.querySelector('.mdc-comment:not(.mdc-resolved)');
     const modalOpen = !backdrop.hidden || !mdEditBackdrop.hidden;
     const active = aiPhase !== 'idle';
-    aiBar.hidden = !(aiConfig && (hasComments || active) && !modalOpen);
+    aiBar.hidden = !(aiConfig && (hasUnresolved || active) && !modalOpen);
   }
   // ---------------------------------------------------------------------------
   // Find-in-comments
