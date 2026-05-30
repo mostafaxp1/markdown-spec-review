@@ -23,18 +23,25 @@ body {
    A slim bar pinned to the top of the view holding the search controls. The
    search box mirrors the popup / AI-bar chrome (input + secondary buttons),
    themed via --vscode-* so it matches the workbench by default. */
+/* No full-width panel: the controls float as a compact cluster pinned to the
+   top-right corner. The container itself is click-through (pointer-events:none)
+   so the empty gaps don't shadow the document beneath; only the actual controls
+   capture clicks. Each control keeps its own button/input background to stay
+   legible over the text. */
 .mdc-toolbar {
-  position: sticky;
-  top: 0;
+  position: fixed;
+  top: 0.6rem;
+  right: 0.8rem;
   z-index: 50;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
-  gap: 0.6em;
-  margin: -1.6rem -1.6rem 1rem;
-  padding: 0.5rem 1.6rem;
-  background: var(--vscode-editor-background, var(--vscode-editorWidget-background));
-  border-bottom: 1px solid var(--vscode-panel-border, rgba(127, 127, 127, 0.25));
+  gap: 0.4em;
+  pointer-events: none;
+}
+
+.mdc-toolbar > * {
+  pointer-events: auto;
 }
 
 /* The bulk "Remove resolved" action sits beside the find bar; it is hidden by
@@ -50,6 +57,11 @@ body {
   display: flex;
   align-items: center;
   gap: 0.3em;
+  padding: 0.3em 0.4em;
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, rgba(127, 127, 127, 0.3)));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
 /* The find bar is collapsed by default and revealed by the toolbar's search
@@ -64,6 +76,12 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Needed so the toggle actually hides while the find bar is open: the rule
+   above would otherwise win over the `[hidden]` user-agent rule. */
+.mdc-search-toggle[hidden] {
+  display: none;
 }
 
 .mdc-search-toggle svg {

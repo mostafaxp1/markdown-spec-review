@@ -36,8 +36,12 @@ There are two ways to view and work with comments:
    - **Resolved comments** (any whose body has a `Resolved:` line — the marker
      the AI appends, or one you type yourself) are tinted green with a
      **✓ Resolved** badge. When any exist, a **Remove resolved** button appears
-     in the top toolbar to sweep them all in one undoable edit (it asks for a
-     quick confirm first).
+     in the floating control cluster at the **top-right** to sweep them all in
+     one undoable edit (it asks for a quick confirm first).
+   - **Find in comments** — there's no top bar; a small **🔍** button floats at
+     the top-right (or press **⌘/Ctrl+F**) to open a find widget. Type to
+     highlight matches, **Enter** / **Shift+Enter** to step through them, and
+     **×** or **Esc** to close.
 
 ## Address comments with AI
 

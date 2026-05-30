@@ -993,8 +993,11 @@
     if (searchBar) {
       searchBar.hidden = false;
     }
+    // The find bar carries its own × close, so the now-redundant 🔍 toggle steps
+    // aside while it's open.
     if (searchToggleBtn) {
       searchToggleBtn.setAttribute('aria-expanded', 'true');
+      searchToggleBtn.hidden = true;
     }
     if (searchInput) {
       searchInput.focus();
@@ -1017,6 +1020,7 @@
     }
     if (searchToggleBtn) {
       searchToggleBtn.setAttribute('aria-expanded', 'false');
+      searchToggleBtn.hidden = false;
       searchToggleBtn.focus();
     }
     persist();
@@ -1299,10 +1303,11 @@
   }
   updateEmptyState();
   refreshDraftMarkers();
-  // Restore a search query that survived a reload, and apply it to the content
-  // rendered into the initial HTML.
-  if (searchQuery) {
+  // Restore a search query that survived a reload: reopen the (otherwise hidden)
+  // find bar and re-apply it to the content rendered into the initial HTML.
+  if (searchQuery && searchInput) {
     searchInput.value = searchQuery;
+    openSearch();
     runSearch(false);
   }
   vscode.postMessage({ type: 'ready' });
