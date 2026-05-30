@@ -1181,12 +1181,12 @@ export class CommentViewerPanel {
     <button type="button" id="mdc-remove-resolved" class="mdc-search-btn mdc-remove-resolved"
       title="Remove all resolved comments" hidden>Remove resolved</button>
     <button type="button" id="mdc-search-toggle" class="mdc-search-btn mdc-search-toggle"
-      title="Search comments (⌘/Ctrl+F)" aria-label="Search comments" aria-expanded="false">
+      title="Search (⌘/Ctrl+F)" aria-label="Search" aria-expanded="false">
       <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M11.74 10.68a6 6 0 1 0-1.06 1.06l3.3 3.3a.75.75 0 0 0 1.06-1.06l-3.3-3.3ZM2.5 6.75a4.25 4.25 0 1 1 8.5 0 4.25 4.25 0 0 1-8.5 0Z"/></svg>
     </button>
     <div class="mdc-search" role="search" hidden>
       <input id="mdc-search-input" class="mdc-search-input" type="text"
-        placeholder="Search comments…" aria-label="Search comments" />
+        placeholder="Search…" aria-label="Search" />
       <span id="mdc-search-count" class="mdc-search-count" aria-live="polite"></span>
       <button type="button" id="mdc-search-prev" class="mdc-search-btn"
         title="Previous match (Shift+Enter)" aria-label="Previous match">▲</button>
@@ -1195,9 +1195,6 @@ export class CommentViewerPanel {
       <button type="button" id="mdc-search-clear" class="mdc-search-btn mdc-search-clear"
         title="Close search (Esc)" aria-label="Close search">×</button>
     </div>
-  </div>
-  <div id="mdc-empty" class="mdc-empty" hidden>
-    No comments yet. Hover any heading or paragraph and click the <strong>+</strong> to add one.
   </div>
   <div id="mdc-content" class="mdc-content">${initialHtml}</div>
   <div id="mdc-toast" class="mdc-toast" role="status" aria-live="polite" hidden></div>

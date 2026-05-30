@@ -312,7 +312,7 @@ mark.mdc-search-hit-current {
 
 /* Highlighted text + text selection. Use a solid, theme-correct highlight with
    an explicitly contrasting font color so highlighted words stay readable. */
-.mdc-content mark {
+.mdc-content mark:not(.mdc-search-hit) {
   padding: 0 0.15em;
   border-radius: 2px;
   color: var(--mdc-mark-fg, var(--vscode-editor-foreground));

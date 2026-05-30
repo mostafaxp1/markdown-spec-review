@@ -877,22 +877,33 @@
     searchActive = -1;
   }
 
-  // We search comment text + meta only — the bar's placeholder is "Search
-  // comments", and the action buttons / badges shouldn't match.
+  // Search the full page content. Action buttons and resolved badges are
+  // excluded so their labels don't produce false matches.
   function searchContainers() {
-    return content.querySelectorAll('.mdc-comment-body, .mdc-comment-meta');
+    return [content];
   }
 
   // Wrap each case-insensitive occurrence of `lowerQuery` within `root`'s text
   // nodes in a <mark>. Collects the text nodes first so freshly inserted marks
-  // aren't re-visited.
+  // aren't re-visited. Text inside .mdc-comment-actions is skipped.
   function highlightWithin(root, lowerQuery) {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
     const textNodes = [];
     let node;
     while ((node = walker.nextNode())) {
       if (node.nodeValue) {
-        textNodes.push(node);
+        let skip = false;
+        let el = node.parentElement;
+        while (el && el !== root) {
+          if (el.classList && el.classList.contains('mdc-comment-actions')) {
+            skip = true;
+            break;
+          }
+          el = el.parentElement;
+        }
+        if (!skip) {
+          textNodes.push(node);
+        }
       }
     }
     for (let i = 0; i < textNodes.length; i++) {
