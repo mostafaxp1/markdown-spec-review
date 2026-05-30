@@ -1,4 +1,4 @@
-# Markdown Comments — Demo
+# Markdown Spec Review — Demo
 
 Open the preview (`Cmd/Ctrl+Shift+V`) to see comments rendered as bubbles.
 Put your cursor in any heading or paragraph below and run **Add Comment**

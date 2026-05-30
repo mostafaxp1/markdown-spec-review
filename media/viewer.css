@@ -382,43 +382,120 @@ mark.mdc-search-hit-current {
   font-size: 0.92em;
 }
 
+/* ---- hovered block/list highlight (left border) ------------------------- */
+.mdc-content [data-source-line].mdc-hovered,
+.mdc-content ul.mdc-hovered {
+  position: relative;
+  border-radius: 1px;
+}
+
+.mdc-content [data-source-line].mdc-hovered::after,
+.mdc-content ul.mdc-hovered::after {
+  content: '';
+  position: absolute;
+  top: 0.12em;
+  bottom: 0.12em;
+  left: -12px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--mdc-hover-line, rgba(128, 128, 128, 0.62));
+  pointer-events: none;
+}
+
+.mdc-content :is(li, ol)[data-source-line].mdc-hovered:has(li, ul, ol)::after {
+  display: none;
+}
+
+.mdc-content :is(li, ol)[data-source-line].mdc-hovered:not(:has(li, ul, ol))::after {
+  left: -22px;
+}
+
 /* ---- floating "+" add affordance ---------------------------------------- */
 .mdc-add-affordance {
   position: fixed;
   z-index: 30;
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  line-height: 20px;
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  border: 1px solid var(--vscode-button-border, transparent);
+  border: 1px solid var(--vscode-button-border, rgba(127, 127, 127, 0.35));
   border-radius: 50%;
   color: var(--vscode-button-foreground, #fff);
   background: var(--vscode-button-background, #0e639c);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-  opacity: 0.9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+  opacity: 0.96;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    opacity 0.12s ease;
 }
 
 .mdc-add-affordance:hover {
   opacity: 1;
   background: var(--vscode-button-hoverBackground, #1177bb);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.34);
 }
 
 .mdc-add-affordance:focus-visible {
-  outline: 1px solid var(--vscode-focusBorder);
-  outline-offset: 1px;
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
 }
 
 .mdc-edit-block-affordance {
   color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
-  background: var(--vscode-button-secondaryBackground, rgba(127, 127, 127, 0.55));
+  background:  rgb(51, 51, 51) !important;
 }
 
 .mdc-edit-block-affordance:hover {
-  background: var(--vscode-button-secondaryHoverBackground, rgba(127, 127, 127, 0.75));
+  background: rgb(73, 73, 73) !important;
+}
+
+/* ---- right-click context menu ------------------------------------------
+   A compact menu pinned at the pointer offering the same Comment / Edit
+   actions as the hover affordances. */
+.mdc-context-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 9em;
+  padding: 0.25em;
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  background: var(--vscode-menu-background, var(--vscode-editorWidget-background, var(--vscode-editor-background)));
+  border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border, var(--vscode-panel-border, rgba(127, 127, 127, 0.3))));
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.36);
+}
+
+.mdc-context-menu[hidden] {
+  display: none;
+}
+
+.mdc-context-item {
+  font: inherit;
+  text-align: left;
+  padding: 0.35em 0.7em;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--vscode-menu-foreground, var(--vscode-foreground));
+  background: transparent;
+}
+
+.mdc-context-item:hover {
+  color: var(--vscode-menu-selectionForeground, var(--vscode-list-activeSelectionForeground, #fff));
+  background: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground, #0e639c));
+}
+
+.mdc-context-item:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
 }
 
 /* ---- unsaved-draft marker ----------------------------------------------
@@ -484,6 +561,18 @@ body.mdc-theme-dark-modern .mdc-has-draft::before {
 
 .mdc-action:hover {
   background: var(--vscode-button-secondaryHoverBackground, rgba(127, 127, 127, 0.3));
+}
+
+/* Keep the edit button a neutral gray in every theme (matching Dark Modern's
+   secondary button look) rather than inheriting theme-tinted button colors. */
+.mdc-action-edit {
+  color: var(--vscode-foreground);
+  background: rgba(127, 127, 127, 0.2) !important;
+  border-color: var(--vscode-button-border, transparent);
+}
+
+.mdc-action-edit:hover {
+  background: rgba(127, 127, 127, 0.3) !important;
 }
 
 .mdc-action:focus-visible {
@@ -577,8 +666,8 @@ body.mdc-popup-open .mdc-toast {
   max-height: 40vh;
   font: inherit;
   padding: 0.5em 0.6em;
-  color: var(--vscode-input-foreground);
-  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground, var(--vscode-editor-foreground, var(--vscode-foreground, #cccccc)));
+  background: var(--vscode-input-background, var(--vscode-editor-background));
   border: 1px solid var(--vscode-input-border, var(--vscode-panel-border, rgba(127, 127, 127, 0.4)));
   border-radius: 4px;
 }
@@ -854,6 +943,73 @@ body.mdc-popup-open .mdc-toast {
 
 .mdc-ai-stop:hover {
   filter: brightness(1.12);
+}
+
+/* Copy-prompt icon button — sits at the far right of the row. Uses the same
+   font-size and padding as the text buttons so it matches their height exactly. */
+.mdc-ai-icon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.82em;
+  padding: 0.3em;
+  cursor: pointer;
+  color: var(--vscode-descriptionForeground);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.1s, background 0.1s;
+}
+
+.mdc-ai-icon-btn svg {
+  display: block;
+}
+
+/* Fast CSS hint (the native title has a ~1s delay). Reads data-hint and floats
+   above the button, since the AI bar is pinned to the bottom-right. */
+.mdc-ai-icon-btn[data-hint]::after {
+  content: attr(data-hint);
+  position: absolute;
+  bottom: calc(100% + 0.45em);
+  right: 0;
+  z-index: 1;
+  padding: 0.3em 0.55em;
+  font-size: 0.92em;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 0.1s, transform 0.1s;
+  color: var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground));
+  background: var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background));
+  border: 1px solid var(--vscode-editorHoverWidget-border, var(--vscode-widget-border, rgba(127, 127, 127, 0.35)));
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+
+.mdc-ai-icon-btn[data-hint]:hover::after,
+.mdc-ai-icon-btn[data-hint]:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.mdc-ai-icon-btn:hover {
+  color: var(--vscode-foreground);
+  background: var(--vscode-toolbar-hoverBackground, rgba(127, 127, 127, 0.15));
+}
+
+.mdc-ai-icon-btn:active {
+  background: var(--vscode-toolbar-activeBackground, rgba(127, 127, 127, 0.25));
+}
+
+.mdc-ai-icon-btn:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
 }
 
 /* Guarantee hidden controls collapse even though the row is a flex container. */
@@ -1399,8 +1555,8 @@ body.mdc-theme-dark-modern .mdc-target {
   --mdc-pop-bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
   --mdc-pop-fg: var(--vscode-editor-foreground);
   --mdc-pop-border: var(--vscode-widget-border, var(--vscode-panel-border, rgba(127, 127, 127, 0.35)));
-  --mdc-pop-input-fg: var(--vscode-input-foreground);
-  --mdc-pop-input-bg: var(--vscode-input-background);
+  --mdc-pop-input-fg: var(--vscode-input-foreground, var(--vscode-editor-foreground, var(--vscode-foreground, #cccccc)));
+  --mdc-pop-input-bg: var(--vscode-input-background, var(--vscode-editor-background));
   --mdc-pop-input-border: var(--vscode-input-border, var(--vscode-panel-border, rgba(127, 127, 127, 0.4)));
   --mdc-pop-focus: var(--vscode-focusBorder);
   --mdc-pop-error: var(--vscode-inputValidation-errorBorder, #be1100);
@@ -1423,8 +1579,8 @@ body[class*="mdc-theme-"] .mdc-modal {
   border-top-color: var(--mdc-pop-border);
 }
 body[class*="mdc-theme-"] .mdc-modal-textarea {
-  color: var(--mdc-pop-input-fg);
-  background: var(--mdc-pop-input-bg);
+  color: var(--mdc-pop-input-fg, var(--vscode-editor-foreground, var(--vscode-foreground, #cccccc)));
+  background: var(--mdc-pop-input-bg, var(--vscode-editor-background));
   border-color: var(--mdc-pop-input-border);
 }
 body[class*="mdc-theme-"] .mdc-modal-textarea:focus {
@@ -1594,6 +1750,50 @@ body.mdc-theme-light-modern .mdc-ai-status.mdc-ai-review {
 }
 body.mdc-theme-dark .mdc-ai-status.mdc-ai-review {
   color: #cccccc;
+}
+
+/* Copy icon button per forced color theme. */
+body.mdc-theme-light .mdc-ai-icon-btn,
+body.mdc-theme-light-modern .mdc-ai-icon-btn {
+  color: #717171;
+}
+body.mdc-theme-light .mdc-ai-icon-btn:hover,
+body.mdc-theme-light-modern .mdc-ai-icon-btn:hover {
+  color: #3b3b3b;
+  background: rgba(0, 0, 0, 0.08);
+}
+body.mdc-theme-light .mdc-ai-icon-btn:active,
+body.mdc-theme-light-modern .mdc-ai-icon-btn:active {
+  background: rgba(0, 0, 0, 0.14);
+}
+body.mdc-theme-dark .mdc-ai-icon-btn {
+  color: rgba(204, 204, 204, 0.6);
+}
+body.mdc-theme-dark .mdc-ai-icon-btn:hover {
+  color: #cccccc;
+  background: rgba(255, 255, 255, 0.08);
+}
+body.mdc-theme-dark .mdc-ai-icon-btn:active {
+  background: rgba(255, 255, 255, 0.14);
+}
+body.mdc-theme-light .mdc-ai-icon-btn:focus-visible,
+body.mdc-theme-light-modern .mdc-ai-icon-btn:focus-visible {
+  outline-color: #0090f1;
+}
+body.mdc-theme-dark .mdc-ai-icon-btn:focus-visible {
+  outline-color: #007fd4;
+}
+/* Hint bubble per forced theme. */
+body.mdc-theme-light .mdc-ai-icon-btn[data-hint]::after,
+body.mdc-theme-light-modern .mdc-ai-icon-btn[data-hint]::after {
+  color: #3b3b3b;
+  background: #ffffff;
+  border-color: #cecece;
+}
+body.mdc-theme-dark .mdc-ai-icon-btn[data-hint]::after {
+  color: #cccccc;
+  background: #252526;
+  border-color: #454545;
 }
 
 /* ===========================================================================
@@ -1849,3 +2049,116 @@ body.mdc-theme-dark-modern {
   color: var(--mdc-hljs-del-color);
   background-color: var(--mdc-hljs-del-bg);
 }
+
+/* ===========================================================================
+   Markdown source editor — syntax highlight overlay (mdc-mded-*)
+   A <pre> absolutely stacked behind the transparent <textarea> mirrors its
+   content with lightweight regex-based token coloring. Colors always follow
+   the CURRENT VS Code workbench theme (body.vscode-light / body.vscode-dark)
+   regardless of any forced viewer color theme, because the editor popup is
+   always workbench-colored.
+   =========================================================================== */
+
+/* -- Layout: wrapper + overlay positioning --------------------------------- */
+.mdc-mded-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+/* The overlay pre fills the wrapper and carries the highlighted content.
+   Font, padding and border-width must match .mdc-modal-textarea exactly so
+   the text in the two layers is perfectly aligned. */
+.mdc-mded-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  /* Match .mdc-modal-textarea */
+  padding: 0.5em 0.6em;
+  /* Match .mdc-mdedit-textarea */
+  font-family: var(--vscode-editor-font-family, "SF Mono", Menlo, Consolas, "Courier New", monospace);
+  font-size: 0.88em;
+  line-height: inherit;
+  /* Wrap the same way as the textarea */
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  /* Same border width as the textarea (transparent — input bg shows through) */
+  border: 1px solid transparent;
+  border-radius: 4px;
+  /* Sync scroll via JS; don't show a scrollbar */
+  overflow: hidden;
+  /* Base text remains visible; highlighted spans override token colours. */
+  color: var(--mdc-pop-input-fg, var(--vscode-input-foreground, var(--vscode-editor-foreground, var(--vscode-foreground, #cccccc))));
+  background: transparent;
+  /* Never capture pointer events */
+  pointer-events: none;
+  tab-size: 4;
+  -moz-tab-size: 4;
+}
+
+/* Textarea sits on top of the overlay. Its text becomes transparent so only
+   the pre's coloured spans are visible; caret-color keeps the cursor visible. */
+.mdc-mded-wrap .mdc-mdedit-textarea {
+  position: relative;
+  background-color: transparent !important;
+  color: transparent !important;
+  caret-color: var(--mdc-pop-input-fg, var(--vscode-input-foreground, var(--vscode-editor-foreground, var(--vscode-foreground, #cccccc))));
+  tab-size: 4;
+  -moz-tab-size: 4;
+}
+
+/* -- Token color palette — light workbench --------------------------------- */
+body.vscode-light,
+body.vscode-high-contrast-light {
+  --mh-heading: #005A9E;
+  --mh-hmark:   #005A9E;
+  --mh-fence:   #767676;
+  --mh-code:    #A31515;
+  --mh-icode:   #A31515;
+  --mh-quote:   #008000;
+  --mh-hr:      #767676;
+  --mh-bold:    #0070C0;
+  --mh-italic:  #811F3F;
+  --mh-punct:   #767676;
+  --mh-ltext:   #0070C0;
+  --mh-lurl:    #006AB1;
+  --mh-comment: #6A737D;
+}
+
+/* -- Token color palette — dark workbench ---------------------------------- */
+body.vscode-dark,
+body.vscode-high-contrast {
+  --mh-heading: #4EC9B0;
+  --mh-hmark:   #4EC9B0;
+  --mh-fence:   #808080;
+  --mh-code:    #CE9178;
+  --mh-icode:   #D7BA7D;
+  --mh-quote:   #6A9955;
+  --mh-hr:      #569CD6;
+  --mh-bold:    #4FC1FF;
+  --mh-italic:  #C586C0;
+  --mh-punct:   #808080;
+  --mh-ltext:   #9CDCFE;
+  --mh-lurl:    #CE9178;
+  --mh-comment: #6A9955;
+}
+
+/* -- Token color rules ----------------------------------------------------- */
+.mdc-mded-overlay .mh-heading { color: var(--mh-heading); }
+.mdc-mded-overlay .mh-hmark   { color: var(--mh-hmark);   }
+.mdc-mded-overlay .mh-fence   { color: var(--mh-fence);   }
+.mdc-mded-overlay .mh-code    { color: var(--mh-code);    }
+.mdc-mded-overlay .mh-icode   { color: var(--mh-icode);   }
+.mdc-mded-overlay .mh-quote   { color: var(--mh-quote);   }
+.mdc-mded-overlay .mh-hr      { color: var(--mh-hr);      }
+.mdc-mded-overlay .mh-bold    { color: var(--mh-bold);    }
+.mdc-mded-overlay .mh-italic  { color: var(--mh-italic);  }
+.mdc-mded-overlay .mh-punct   { color: var(--mh-punct);   }
+.mdc-mded-overlay .mh-ltext   { color: var(--mh-ltext);   }
+.mdc-mded-overlay .mh-lurl    { color: var(--mh-lurl);    }
+.mdc-mded-overlay .mh-comment { color: var(--mh-comment); }

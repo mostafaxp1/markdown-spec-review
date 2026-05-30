@@ -1,9 +1,10 @@
 {
-  "name": "markdown-comments",
-  "displayName": "Markdown Comments",
+  "name": "markdown-spec-review",
+  "displayName": "Markdown Spec Review",
   "description": "Add review comments to headings and paragraphs in Markdown files. Comments are stored inline (invisible to other renderers) and shown as bubbles in the built-in Markdown preview.",
   "version": "0.1.0",
   "publisher": "mostafa",
+  "icon": "media/icon.png",
   "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
@@ -34,34 +35,34 @@
       {
         "command": "markdownComments.addComment",
         "title": "Add Comment",
-        "category": "Markdown Comments"
+        "category": "Markdown Spec Review"
       },
       {
         "command": "markdownComments.removeComment",
         "title": "Remove Comment at Cursor",
-        "category": "Markdown Comments"
+        "category": "Markdown Spec Review"
       },
       {
         "command": "markdownComments.editComment",
         "title": "Edit Comment at Cursor",
-        "category": "Markdown Comments"
+        "category": "Markdown Spec Review"
       },
       {
         "command": "markdownComments.openInteractiveView",
         "title": "Open Interactive Comments View",
-        "category": "Markdown Comments",
+        "category": "Markdown Spec Review",
         "icon": "$(comment-discussion)"
       },
       {
         "command": "markdownComments.revertToSource",
         "title": "Show Markdown Source",
-        "category": "Markdown Comments",
+        "category": "Markdown Spec Review",
         "icon": "$(code)"
       },
       {
         "command": "markdownComments.addressComments",
         "title": "Address Comments with AI",
-        "category": "Markdown Comments",
+        "category": "Markdown Spec Review",
         "icon": "$(sparkle)"
       }
     ],
@@ -136,7 +137,7 @@
       }
     ],
     "configuration": {
-      "title": "Markdown Comments",
+      "title": "Markdown Spec Review",
       "properties": {
         "markdownComments.author": {
           "type": "string",

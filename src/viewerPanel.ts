@@ -101,7 +101,7 @@ function getAiConfigForWebview() {
 let aiOutput: vscode.OutputChannel | undefined;
 function getAiOutput(): vscode.OutputChannel {
   if (!aiOutput) {
-    aiOutput = vscode.window.createOutputChannel('Markdown Comments AI');
+    aiOutput = vscode.window.createOutputChannel('Markdown Spec Review AI');
   }
   return aiOutput;
 }
@@ -144,7 +144,7 @@ export class CommentViewerPanel {
     preferredColumn?: vscode.ViewColumn
   ): void {
     if (!document || document.languageId !== 'markdown') {
-      vscode.window.showWarningMessage('Markdown Comments: open a Markdown file first.');
+      vscode.window.showWarningMessage('Markdown Spec Review: open a Markdown file first.');
       return;
     }
 
@@ -190,7 +190,7 @@ export class CommentViewerPanel {
   ): Promise<void> {
     const document = editor?.document;
     if (!document || document.languageId !== 'markdown') {
-      vscode.window.showWarningMessage('Markdown Comments: open a Markdown file first.');
+      vscode.window.showWarningMessage('Markdown Spec Review: open a Markdown file first.');
       return;
     }
 
@@ -472,6 +472,9 @@ export class CommentViewerPanel {
       case 'rejectChanges':
         await this.handleReject();
         break;
+      case 'copyPrompt':
+        await this.handleCopyPrompt(msg);
+        break;
       case 'addComment':
         await this.handleAdd(msg);
         break;
@@ -492,6 +495,9 @@ export class CommentViewerPanel {
         break;
       case 'requestBlockMarkdown':
         await this.handleRequestBlockMarkdown(msg);
+        break;
+      case 'copyText':
+        await this.handleCopyText(msg);
         break;
       case 'saveBlockMarkdown':
         await this.handleSaveBlockMarkdown(msg);
@@ -670,6 +676,15 @@ export class CommentViewerPanel {
       sourceEnd,
       version: doc.version,
     });
+  }
+
+  private async handleCopyText(msg: any): Promise<void> {
+    const text = typeof msg.text === 'string' ? msg.text : '';
+    if (!text.trim()) {
+      return;
+    }
+    await vscode.env.clipboard.writeText(text);
+    this.panel.webview.postMessage({ type: 'toast', message: 'Copied to clipboard.' });
   }
 
   private async handleSaveBlockMarkdown(msg: any): Promise<void> {
@@ -920,6 +935,31 @@ export class CommentViewerPanel {
     }
   }
 
+  /** Copy the prompt that would be sent to the agent to the clipboard. */
+  private async handleCopyPrompt(msg: any): Promise<void> {
+    const settings = getAiSettings();
+    const effort: Effort = (EFFORTS as string[]).includes(msg?.effort)
+      ? (msg.effort as Effort)
+      : settings.effort;
+
+    const doc = await this.getDocument();
+    if (!doc) {
+      this.postAiStatus('error', 'The Markdown document is not available.');
+      return;
+    }
+
+    const comments = extractComments(doc.getText());
+    if (comments.length === 0) {
+      this.postAiStatus('error', 'There are no comments to copy a prompt for.');
+      return;
+    }
+
+    const docPath = doc.uri.scheme === 'file' ? doc.uri.fsPath : doc.uri.toString();
+    const instructions = buildInstructions({ docPath, comments, effort });
+    await vscode.env.clipboard.writeText(instructions);
+    this.panel.webview.postMessage({ type: 'promptCopied' });
+  }
+
   /**
    * Hand the document and its comments to the configured agent so it revises
    * the prose to address them. The webview supplies the per-run model/effort;
@@ -1008,7 +1048,7 @@ export class CommentViewerPanel {
     docPath: string;
     cwd: string;
   }): Promise<void> {
-    const tmp = path.join(os.tmpdir(), `markdown-comments-${getNonce()}.md`);
+    const tmp = path.join(os.tmpdir(), `markdown-spec-review-${getNonce()}.md`);
     await fsp.writeFile(tmp, p.instructions, 'utf8');
     const prompt =
       `Follow the review instructions in ${tmp} exactly: edit ${p.docPath} in place to ` +
@@ -1029,7 +1069,7 @@ export class CommentViewerPanel {
   }
 
   /** Headless mode: spawn the agent non-interactively; it edits the file and we
-   *  offer review when it exits. Output is streamed to the "Markdown Comments
+   *  offer review when it exits. Output is streamed to the "Markdown Spec Review
    *  AI" channel, which is revealed on failure. */
   private runHeadless(p: {
     agent: AgentId;
@@ -1087,7 +1127,7 @@ export class CommentViewerPanel {
         out.appendLine(`\n[error] ${p.label} exited with code ${code}.`);
         out.show(true);
         void this.finishRun({
-          note: `${p.label} exited with code ${code} — see the "Markdown Comments AI" output.`,
+          note: `${p.label} exited with code ${code} — see the "Markdown Spec Review AI" output.`,
           error: true,
         });
       }
@@ -1270,7 +1310,7 @@ export class CommentViewerPanel {
   <link rel="stylesheet" href="${mediaUri('preview.css')}" />
   <link rel="stylesheet" href="${mediaUri('viewer.css')}" />
   <style nonce="${nonce}">:root{--mdc-font-size:${fontSize}px;--mdc-content-max-width:${maxWidthCss};}</style>
-  <title>Markdown Comments</title>
+  <title>Markdown Spec Review</title>
 </head>
 <body class="${themeClass}" data-doc-version="${this.renderedVersion}">
   <div class="mdc-toolbar">

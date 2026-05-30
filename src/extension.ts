@@ -17,7 +17,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('markdownComments.addressComments', () => {
       if (!CommentViewerPanel.addressActive()) {
         vscode.window.showWarningMessage(
-          'Markdown Comments: open the Interactive Comments View to address comments with AI.'
+          'Markdown Spec Review: open the Interactive Comments View to address comments with AI.'
         );
       }
     }),

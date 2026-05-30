@@ -12,7 +12,7 @@ import { CommentViewerPanel } from './viewerPanel';
 function requireMarkdownEditor(): vscode.TextEditor | undefined {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'markdown') {
-    vscode.window.showWarningMessage('Markdown Comments: open a Markdown file first.');
+    vscode.window.showWarningMessage('Markdown Spec Review: open a Markdown file first.');
     return undefined;
   }
   return editor;
@@ -55,7 +55,7 @@ async function editComment(): Promise<void> {
 
   const found = findCommentAt(editor.document, editor.selection.active);
   if (!found) {
-    vscode.window.showInformationMessage('Markdown Comments: no comment at the cursor.');
+    vscode.window.showInformationMessage('Markdown Spec Review: no comment at the cursor.');
     return;
   }
 
@@ -82,7 +82,7 @@ async function removeComment(): Promise<void> {
 
   const found = findCommentAt(editor.document, editor.selection.active);
   if (!found) {
-    vscode.window.showInformationMessage('Markdown Comments: no comment at the cursor.');
+    vscode.window.showInformationMessage('Markdown Spec Review: no comment at the cursor.');
     return;
   }
 

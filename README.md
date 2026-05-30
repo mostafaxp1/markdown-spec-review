@@ -1,4 +1,4 @@
-# Markdown Comments
+# Markdown Spec Review
 
 A VS Code extension for leaving review comments on the headings and paragraphs
 of a Markdown file. Comments are stored **inline** as HTML comment blocks, so
@@ -58,7 +58,7 @@ silent edits.
 - **Run mode** is either an integrated **terminal** (you watch the agent work
   and approve its edits) or **headless** (it runs in the background, edits the
   file, and the view refreshes when it finishes — progress is logged to the
-  _Markdown Comments AI_ output channel).
+  _Markdown Spec Review AI_ output channel).
 - Supported agents: **Claude Code** (`claude`), **Codex** (`codex`),
   **GitHub Copilot CLI** (`copilot`), and **Antigravity** (`antigravity`). The
   chosen agent's CLI must be installed and on your `PATH`, or pointed at via
@@ -85,12 +85,12 @@ reads and writes it there.
 
 | Command                                               | Default keybinding | What it does                                                                       |
 | ----------------------------------------------------- | ------------------ | ---------------------------------------------------------------------------------- |
-| **Markdown Comments: Add Comment**                    | `Cmd/Ctrl+Alt+M`   | Insert a comment anchored to the current block                                     |
-| **Markdown Comments: Edit Comment at Cursor**         | —                  | Edit the body of the comment under the cursor                                      |
-| **Markdown Comments: Remove Comment at Cursor**       | —                  | Delete the comment under the cursor                                                |
-| **Markdown Comments: Open Interactive Comments View** | `Alt+Shift+V`      | Open the click-to-comment view in place of the editor (add/edit/remove via popups) |
-| **Markdown Comments: Show Markdown Source**           | `Alt+Shift+V`      | From the Comments view, flip back to the raw `.md` editor (same key toggles back)  |
-| **Markdown Comments: Address Comments with AI**       | —                  | Hand the document's comments to the configured AI agent to resolve (Comments view) |
+| **Markdown Spec Review: Add Comment**                    | `Cmd/Ctrl+Alt+M`   | Insert a comment anchored to the current block                                     |
+| **Markdown Spec Review: Edit Comment at Cursor**         | —                  | Edit the body of the comment under the cursor                                      |
+| **Markdown Spec Review: Remove Comment at Cursor**       | —                  | Delete the comment under the cursor                                                |
+| **Markdown Spec Review: Open Interactive Comments View** | `Alt+Shift+V`      | Open the click-to-comment view in place of the editor (add/edit/remove via popups) |
+| **Markdown Spec Review: Show Markdown Source**           | `Alt+Shift+V`      | From the Comments view, flip back to the raw `.md` editor (same key toggles back)  |
+| **Markdown Spec Review: Address Comments with AI**       | —                  | Hand the document's comments to the configured AI agent to resolve (Comments view) |
 
 The first three are also on the editor right-click menu in Markdown files; the
 interactive view is also available from the editor toolbar button, and the

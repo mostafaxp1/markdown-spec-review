@@ -104,23 +104,59 @@
   document.body.appendChild(editBlockBtn);
 
   let hoverBlock = null;
+  let hoveredEls = [];
+
+  function clearHovered() {
+    for (let i = 0; i < hoveredEls.length; i++) {
+      hoveredEls[i].classList.remove('mdc-hovered');
+    }
+    hoveredEls = [];
+  }
 
   function showAffordanceFor(block) {
+    if (hoverBlock !== block) {
+      clearHovered();
+    }
     hoverBlock = block;
+    hoveredEls = [block];
+    let el = block.parentElement;
+    while (el && el !== content) {
+      if (el.tagName === 'LI' || el.tagName === 'UL' || el.tagName === 'OL') {
+        hoveredEls.push(el);
+      }
+      el = el.parentElement;
+    }
+    for (let i = 0; i < hoveredEls.length; i++) {
+      hoveredEls[i].classList.add('mdc-hovered');
+    }
     const rect = block.getBoundingClientRect();
+    const contentRect = content.getBoundingClientRect();
     const top = Math.max(2, rect.top);
+    const left = Math.min(window.innerWidth - 66, Math.max(8, contentRect.right + 14));
     addBtn.style.top = top + 'px';
-    addBtn.style.left = Math.max(2, rect.left - 26) + 'px';
+    addBtn.style.left = left + 'px';
     addBtn.hidden = false;
     editBlockBtn.style.top = top + 'px';
-    editBlockBtn.style.left = Math.max(2, rect.left - 52) + 'px';
+    editBlockBtn.style.left = (left + 32) + 'px';
     editBlockBtn.hidden = false;
   }
 
   function hideAffordance() {
     addBtn.hidden = true;
     editBlockBtn.hidden = true;
+    clearHovered();
     hoverBlock = null;
+  }
+
+  function hideAffordanceButtons() {
+    addBtn.hidden = true;
+    editBlockBtn.hidden = true;
+  }
+
+  function restoreAffordance() {
+    if (hoverBlock && content.contains(hoverBlock) && backdrop.hidden && mdEditBackdrop.hidden) {
+      showAffordanceFor(hoverBlock);
+    }
   }
 
   content.addEventListener('mouseover', function (e) {
@@ -148,19 +184,111 @@
     }
     const sourceEnd = Number(block.getAttribute('data-source-end'));
     const sourceLine = Number(block.getAttribute('data-source-line'));
-    hideAffordance();
+    hideAffordanceButtons();
     openModal({ mode: 'add', sourceEnd: sourceEnd, sourceLine: sourceLine }, block);
+  }
+
+  function startEditForBlock(block) {
+    if (!block) {
+      return;
+    }
+    const sourceLine = Number(block.getAttribute('data-source-line'));
+    const sourceEnd = Number(block.getAttribute('data-source-end'));
+    hideAffordanceButtons();
+    vscode.postMessage({ type: 'requestBlockMarkdown', sourceLine: sourceLine, sourceEnd: sourceEnd });
   }
 
   editBlockBtn.addEventListener('click', function () {
     if (!hoverBlock) {
       return;
     }
-    const block = hoverBlock;
-    const sourceLine = Number(block.getAttribute('data-source-line'));
-    const sourceEnd = Number(block.getAttribute('data-source-end'));
-    hideAffordance();
-    vscode.postMessage({ type: 'requestBlockMarkdown', sourceLine: sourceLine, sourceEnd: sourceEnd });
+    startEditForBlock(hoverBlock);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Right-click context menu (Comment / Edit) for a block
+  // ---------------------------------------------------------------------------
+  const blockMenu = document.createElement('div');
+  blockMenu.className = 'mdc-context-menu';
+  blockMenu.setAttribute('role', 'menu');
+  blockMenu.hidden = true;
+  blockMenu.innerHTML =
+    '<button type="button" class="mdc-context-item" role="menuitem" data-action="comment">Comment</button>' +
+    '<button type="button" class="mdc-context-item" role="menuitem" data-action="edit">Edit</button>' +
+    '<button type="button" class="mdc-context-item" role="menuitem" data-action="copy">Copy</button>';
+  document.body.appendChild(blockMenu);
+
+  let menuBlock = null;
+  let menuSelection = '';
+
+  function hideBlockMenu() {
+    if (blockMenu.hidden) {
+      return;
+    }
+    blockMenu.hidden = true;
+    menuBlock = null;
+  }
+
+  function showBlockMenu(block, x, y) {
+    menuBlock = block;
+    blockMenu.hidden = false;
+    // Clamp to the viewport so the menu never spills off-screen.
+    const rect = blockMenu.getBoundingClientRect();
+    const left = Math.min(x, window.innerWidth - rect.width - 6);
+    const top = Math.min(y, window.innerHeight - rect.height - 6);
+    blockMenu.style.left = Math.max(6, left) + 'px';
+    blockMenu.style.top = Math.max(6, top) + 'px';
+  }
+
+  content.addEventListener('contextmenu', function (e) {
+    if (!backdrop.hidden || !mdEditBackdrop.hidden) {
+      return; // modal open
+    }
+    const block = e.target.closest && e.target.closest('[data-source-line]');
+    if (!block || !content.contains(block)) {
+      return;
+    }
+    e.preventDefault();
+    hideAffordanceButtons();
+    // Capture the selection now — clicking a menu item collapses it.
+    const sel = window.getSelection();
+    menuSelection = sel ? String(sel) : '';
+    showBlockMenu(block, e.clientX, e.clientY);
+  });
+
+  blockMenu.addEventListener('click', function (e) {
+    const item = e.target.closest && e.target.closest('.mdc-context-item');
+    if (!item) {
+      return;
+    }
+    const block = menuBlock;
+    const action = item.getAttribute('data-action');
+    hideBlockMenu();
+    if (action === 'comment') {
+      startAddForBlock(block);
+    } else if (action === 'edit') {
+      startEditForBlock(block);
+    } else if (action === 'copy') {
+      const text = menuSelection.trim();
+      if (text) {
+        vscode.postMessage({ type: 'copyText', text: menuSelection });
+      } else {
+        showToast('Select some text to copy first.');
+      }
+    }
+  });
+
+  // Dismiss the menu on any outside click, scroll, Escape, or new context menu.
+  document.addEventListener('mousedown', function (e) {
+    if (!blockMenu.hidden && !blockMenu.contains(e.target)) {
+      hideBlockMenu();
+    }
+  });
+  window.addEventListener('scroll', hideBlockMenu, true);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      hideBlockMenu();
+    }
   });
 
   // "Add Comment" invoked from the command palette / keyboard shortcut (cmd or
@@ -434,7 +562,7 @@
   function openModal(state, targetEl) {
     modalState = state;
     lastFocused = document.activeElement;
-    hideAffordance();
+    hideAffordanceButtons();
     titleEl.textContent = state.mode === 'add' ? 'Add comment' : 'Edit comment';
     const key = draftKey(state);
     const hasDraft =
@@ -463,6 +591,7 @@
     clearHighlight();
     document.body.classList.remove('mdc-popup-open');
     updateAiBarVisibility();
+    restoreAffordance();
     persist();
     if (lastFocused && typeof lastFocused.focus === 'function') {
       lastFocused.focus();
@@ -736,8 +865,11 @@
   mdEditBackdrop.innerHTML =
     '<div class="mdc-modal" role="dialog" aria-modal="false" aria-labelledby="mdc-mdedit-title">' +
     '<h2 id="mdc-mdedit-title" class="mdc-modal-title">Edit markdown source</h2>' +
+    '<div class="mdc-mded-wrap">' +
+    '<pre class="mdc-mded-overlay" aria-hidden="true"></pre>' +
     '<textarea id="mdc-mdedit-textarea" class="mdc-modal-textarea mdc-mdedit-textarea" rows="12" ' +
     'placeholder="Markdown source…" aria-label="Markdown source"></textarea>' +
+    '</div>' +
     '<div class="mdc-modal-foot">' +
     '<div class="mdc-modal-hint"><kbd>Esc</kbd> to discard · <kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd> to save</div>' +
     '<div class="mdc-modal-buttons">' +
@@ -750,6 +882,7 @@
 
   const mdEditModalEl = mdEditBackdrop.querySelector('.mdc-modal');
   const mdEditTextarea = mdEditBackdrop.querySelector('.mdc-mdedit-textarea');
+  const mdEditOverlay = mdEditBackdrop.querySelector('.mdc-mded-overlay');
   const mdEditCancelBtn = mdEditBackdrop.querySelector('.mdc-mdedit-cancel');
   const mdEditSaveBtn = mdEditBackdrop.querySelector('.mdc-mdedit-save');
 
@@ -759,6 +892,143 @@
 
   function updateMdSaveBtn() {
     mdEditSaveBtn.disabled = mdEditTextarea.value === mdEditOriginal;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Markdown source editor — syntax highlight overlay
+  // ---------------------------------------------------------------------------
+  // A <pre> positioned behind the transparent <textarea> mirrors its content
+  // with lightweight regex-based Markdown token coloring. The textarea's text is
+  // made transparent so only the pre's colored spans are visible; the caret and
+  // selection highlight remain in the textarea layer.
+
+  function mdhEsc(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // Highlight inline tokens within a single raw line. Returns an HTML string.
+  function mdhInline(raw) {
+    var result = '';
+    var i = 0;
+    var len = raw.length;
+    while (i < len) {
+      var ch = raw[i];
+
+      // Inline code span: one or more backticks
+      if (ch === '`') {
+        var t = 0, j = i;
+        while (j < len && raw[j] === '`') { j++; t++; }
+        var delim = '`'.repeat(t);
+        var closeAt = raw.indexOf(delim, j);
+        if (closeAt !== -1 && (closeAt + t >= len || raw[closeAt + t] !== '`')) {
+          result += '<span class="mh-icode">' + mdhEsc(raw.slice(i, closeAt + t)) + '</span>';
+          i = closeAt + t;
+          continue;
+        }
+        result += mdhEsc(ch); i++; continue;
+      }
+
+      // HTML comment <!-- ... -->
+      if (ch === '<' && raw.slice(i, i + 4) === '<!--') {
+        var cc = raw.indexOf('-->', i + 4);
+        if (cc !== -1) {
+          result += '<span class="mh-comment">' + mdhEsc(raw.slice(i, cc + 3)) + '</span>';
+          i = cc + 3; continue;
+        }
+      }
+
+      // Bold ** or __ (must check before single-star italic)
+      if ((ch === '*' || ch === '_') && raw[i + 1] === ch && raw[i + 2] !== ch) {
+        var cb = raw.indexOf(ch + ch, i + 2);
+        if (cb !== -1) {
+          result += '<span class="mh-bold">' + mdhEsc(raw.slice(i, cb + 2)) + '</span>';
+          i = cb + 2; continue;
+        }
+      }
+
+      // Italic * or _ (single)
+      if ((ch === '*' || ch === '_') && raw[i + 1] !== ch) {
+        var ci = raw.indexOf(ch, i + 1);
+        if (ci !== -1 && raw[ci + 1] !== ch) {
+          result += '<span class="mh-italic">' + mdhEsc(raw.slice(i, ci + 1)) + '</span>';
+          i = ci + 1; continue;
+        }
+      }
+
+      // Image ![alt](url) or link [text](url)
+      if ((ch === '!' && raw[i + 1] === '[') || ch === '[') {
+        var isImg = ch === '!';
+        var ts = isImg ? i + 2 : i + 1;
+        var closeTxt = raw.indexOf(']', ts);
+        if (closeTxt !== -1 && raw[closeTxt + 1] === '(') {
+          var closeUrl = raw.indexOf(')', closeTxt + 2);
+          if (closeUrl !== -1) {
+            result += '<span class="mh-punct">' + mdhEsc(isImg ? '![' : '[') + '</span>' +
+                      '<span class="mh-ltext">' + mdhEsc(raw.slice(ts, closeTxt)) + '</span>' +
+                      '<span class="mh-punct">](</span>' +
+                      '<span class="mh-lurl">' + mdhEsc(raw.slice(closeTxt + 2, closeUrl)) + '</span>' +
+                      '<span class="mh-punct">)</span>';
+            i = closeUrl + 1; continue;
+          }
+        }
+      }
+
+      result += mdhEsc(ch); i++;
+    }
+    return result;
+  }
+
+  // Highlight a full block of Markdown text. Returns HTML for the overlay pre.
+  function highlightMarkdown(text) {
+    var lines = text.split('\n');
+    var out = [];
+    var inFence = false;
+    var fenceCh = '';
+    for (var li = 0; li < lines.length; li++) {
+      var line = lines[li];
+      var fenceM = /^(`{3,}|~{3,})/.exec(line);
+      if (fenceM) {
+        var fc = fenceM[1][0];
+        if (!inFence) {
+          inFence = true; fenceCh = fc;
+          out.push('<span class="mh-fence">' + mdhEsc(line) + '</span>');
+          continue;
+        } else if (fc === fenceCh) {
+          inFence = false;
+          out.push('<span class="mh-fence">' + mdhEsc(line) + '</span>');
+          continue;
+        }
+      }
+      if (inFence) {
+        out.push('<span class="mh-code">' + mdhEsc(line) + '</span>');
+        continue;
+      }
+      // Heading
+      var headM = /^(#{1,6})([ \t]|$)/.exec(line);
+      if (headM) {
+        out.push('<span class="mh-hmark">' + mdhEsc(headM[1]) + '</span>' +
+                 '<span class="mh-heading">' + mdhInline(line.slice(headM[1].length)) + '</span>');
+        continue;
+      }
+      // Block quote
+      if (line.charAt(0) === '>') {
+        out.push('<span class="mh-quote">' + mdhEsc(line) + '</span>');
+        continue;
+      }
+      // Horizontal rule
+      if (/^(\*{3,}|-{3,}|_{3,})\s*$/.test(line)) {
+        out.push('<span class="mh-hr">' + mdhEsc(line) + '</span>');
+        continue;
+      }
+      out.push(mdhInline(line));
+    }
+    return out.join('\n');
+  }
+
+  function syncMdHighlight() {
+    if (!mdEditOverlay) { return; }
+    mdEditOverlay.innerHTML = highlightMarkdown(mdEditTextarea.value) + '\n';
+    mdEditOverlay.scrollTop = mdEditTextarea.scrollTop;
   }
 
   function openMdEditor(text, sourceLine, sourceEnd) {
@@ -775,12 +1045,14 @@
     mdEditTextarea.focus();
     mdEditTextarea.setSelectionRange(0, 0);
     mdEditTextarea.scrollTop = 0;
+    syncMdHighlight();
   }
 
   function closeMdEditor() {
     mdEditBackdrop.hidden = true;
     document.body.classList.remove('mdc-popup-open');
     updateAiBarVisibility();
+    restoreAffordance();
   }
 
   function saveMdEditor() {
@@ -798,7 +1070,13 @@
     updateMdSaveBtn();
   }
 
-  mdEditTextarea.addEventListener('input', updateMdSaveBtn);
+  mdEditTextarea.addEventListener('input', function () {
+    updateMdSaveBtn();
+    syncMdHighlight();
+  });
+  mdEditTextarea.addEventListener('scroll', function () {
+    if (mdEditOverlay) { mdEditOverlay.scrollTop = mdEditTextarea.scrollTop; }
+  });
   mdEditCancelBtn.addEventListener('click', closeMdEditor);
   mdEditSaveBtn.addEventListener('click', saveMdEditor);
 
@@ -863,6 +1141,17 @@
     aiEffortSelect.appendChild(opt);
   });
 
+  const aiCopyBtn = document.createElement('button');
+  aiCopyBtn.type = 'button';
+  aiCopyBtn.className = 'mdc-ai-icon-btn mdc-ai-copy';
+  aiCopyBtn.setAttribute('aria-label', 'Copy prompt');
+  aiCopyBtn.setAttribute('data-hint', 'Copy prompt');
+  aiCopyBtn.innerHTML =
+    '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">' +
+    '<path fill="currentColor" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/>' +
+    '<path fill="currentColor" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/>' +
+    '</svg>';
+
   const aiRunBtn = document.createElement('button');
   aiRunBtn.type = 'button';
   aiRunBtn.className = 'mdc-ai-run';
@@ -907,6 +1196,7 @@
   aiRow.appendChild(aiReviewBtn);
   aiRow.appendChild(aiApproveBtn);
   aiRow.appendChild(aiRejectBtn);
+  aiRow.appendChild(aiCopyBtn);
 
   const aiStatus = document.createElement('div');
   aiStatus.className = 'mdc-ai-status';
@@ -1014,6 +1304,7 @@
     aiBusy = aiPhase === 'running';
     aiModelSelect.hidden = !idle;
     aiEffortSelect.hidden = !idle;
+    aiCopyBtn.hidden = !idle;
     aiRunBtn.hidden = !idle;
     aiStopBtn.hidden = aiPhase !== 'running';
     aiReviewBtn.hidden = aiPhase !== 'review';
@@ -1107,6 +1398,14 @@
     vscode.postMessage({ type: 'rejectChanges' });
   }
 
+  aiCopyBtn.addEventListener('click', function () {
+    if (aiPhase !== 'idle') { return; }
+    if (!content.querySelector('.mdc-comment')) {
+      showAiStatus('error', 'There are no comments to build a prompt for.');
+      return;
+    }
+    vscode.postMessage({ type: 'copyPrompt', effort: aiEffortSelect.value });
+  });
   aiRunBtn.addEventListener('click', runAddress);
   aiStopBtn.addEventListener('click', stopAddress);
   aiReviewBtn.addEventListener('click', reviewChanges);
@@ -1508,9 +1807,14 @@
       onAiInfo(msg);
     } else if (msg.type === 'aiStatus') {
       onAiStatus(msg);
+    } else if (msg.type === 'promptCopied') {
+      showAiStatus('done', 'Prompt copied to clipboard.');
+      scheduleStatusHide();
     } else if (msg.type === 'blockMarkdownContent') {
       openMdEditor(msg.text, msg.sourceLine, msg.sourceEnd);
     } else if (msg.type === 'error') {
+      showToast(msg.message);
+    } else if (msg.type === 'toast') {
       showToast(msg.message);
     } else if (msg.type === 'workspaceFiles') {
       if (mentionActive) {
