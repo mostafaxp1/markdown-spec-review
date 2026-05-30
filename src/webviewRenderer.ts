@@ -14,6 +14,7 @@
  */
 
 import MarkdownIt from 'markdown-it';
+import hljs from 'highlight.js';
 import { parseComment } from './commentFormat';
 import { commentPlugin, extractInner } from './markdownItComments';
 
@@ -26,7 +27,20 @@ function getMd(): MarkdownIt {
   if (md) {
     return md;
   }
-  const instance = new MarkdownIt({ html: true, linkify: true });
+  const instance = new MarkdownIt({
+    html: true,
+    linkify: true,
+    highlight: (str, lang) => {
+      if (lang && hljs.getLanguage(lang)) {
+        try {
+          return hljs.highlight(str, { language: lang, ignoreIllegals: true }).value;
+        } catch (_) {
+          // fall through to default escaping
+        }
+      }
+      return '';
+    },
+  });
 
   // Core rule: stamp source-line attributes on block elements, and assign a
   // stable document-order index to each of our comment tokens.

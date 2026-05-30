@@ -91,23 +91,40 @@
   addBtn.hidden = true;
   document.body.appendChild(addBtn);
 
+  const editBlockBtn = document.createElement('button');
+  editBlockBtn.type = 'button';
+  editBlockBtn.className = 'mdc-add-affordance mdc-edit-block-affordance';
+  editBlockBtn.title = 'Edit this block';
+  editBlockBtn.setAttribute('aria-label', 'Edit this block');
+  editBlockBtn.innerHTML =
+    '<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">' +
+    '<path fill="currentColor" d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"/>' +
+    '</svg>';
+  editBlockBtn.hidden = true;
+  document.body.appendChild(editBlockBtn);
+
   let hoverBlock = null;
 
   function showAffordanceFor(block) {
     hoverBlock = block;
     const rect = block.getBoundingClientRect();
-    addBtn.style.top = Math.max(2, rect.top) + 'px';
+    const top = Math.max(2, rect.top);
+    addBtn.style.top = top + 'px';
     addBtn.style.left = Math.max(2, rect.left - 26) + 'px';
     addBtn.hidden = false;
+    editBlockBtn.style.top = top + 'px';
+    editBlockBtn.style.left = Math.max(2, rect.left - 52) + 'px';
+    editBlockBtn.hidden = false;
   }
 
   function hideAffordance() {
     addBtn.hidden = true;
+    editBlockBtn.hidden = true;
     hoverBlock = null;
   }
 
   content.addEventListener('mouseover', function (e) {
-    if (!backdrop.hidden) {
+    if (!backdrop.hidden || !mdEditBackdrop.hidden) {
       return; // modal open
     }
     const target = e.target.closest && e.target.closest('[data-source-line]');
@@ -134,6 +151,17 @@
     hideAffordance();
     openModal({ mode: 'add', sourceEnd: sourceEnd, sourceLine: sourceLine }, block);
   }
+
+  editBlockBtn.addEventListener('click', function () {
+    if (!hoverBlock) {
+      return;
+    }
+    const block = hoverBlock;
+    const sourceLine = Number(block.getAttribute('data-source-line'));
+    const sourceEnd = Number(block.getAttribute('data-source-end'));
+    hideAffordance();
+    vscode.postMessage({ type: 'requestBlockMarkdown', sourceLine: sourceLine, sourceEnd: sourceEnd });
+  });
 
   // "Add Comment" invoked from the command palette / keyboard shortcut (cmd or
   // ctrl+alt+m) while this view is focused — there's no hover or text cursor to
@@ -319,8 +347,11 @@
   backdrop.innerHTML =
     '<div class="mdc-modal" role="dialog" aria-modal="false" aria-labelledby="mdc-modal-title">' +
     '<h2 id="mdc-modal-title" class="mdc-modal-title"></h2>' +
+    '<div class="mdc-textarea-wrap">' +
+    '<ul class="mdc-mention-list" hidden aria-label="File suggestions" role="listbox"></ul>' +
     '<textarea id="mdc-modal-textarea" class="mdc-modal-textarea" rows="8" ' +
-    'placeholder="Type your comment…" aria-label="Comment text"></textarea>' +
+    'placeholder="Type your comment… (@ to reference a file)" aria-label="Comment text"></textarea>' +
+    '</div>' +
     '<div class="mdc-modal-foot">' +
     '<div class="mdc-modal-hint">Markdown supported · <kbd>Esc</kbd> to cancel · <kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd> to save</div>' +
     '<div class="mdc-modal-buttons">' +
@@ -334,6 +365,7 @@
   const modalEl = backdrop.querySelector('.mdc-modal');
   const titleEl = backdrop.querySelector('.mdc-modal-title');
   const textarea = backdrop.querySelector('.mdc-modal-textarea');
+  const mentionListEl = backdrop.querySelector('.mdc-mention-list');
   const cancelBtn = backdrop.querySelector('.mdc-modal-cancel');
   const saveBtn = backdrop.querySelector('.mdc-modal-save');
 
@@ -425,6 +457,7 @@
   }
 
   function closeModal() {
+    closeMention();
     backdrop.hidden = true;
     modalState = null;
     clearHighlight();
@@ -499,7 +532,41 @@
   textarea.addEventListener('input', function () {
     textarea.classList.remove('mdc-invalid');
     saveDraft();
+    checkMention();
   });
+
+  textarea.addEventListener('keydown', function (e) {
+    if (!mentionActive || mentionListEl.hidden) {
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      e.stopPropagation();
+      moveMentionSel(1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      e.stopPropagation();
+      moveMentionSel(-1);
+    } else if (e.key === 'Enter' && mentionSelIdx >= 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      acceptMention(mentionSelIdx);
+    } else if (e.key === 'Tab') {
+      if (mentionFiles.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        acceptMention(mentionSelIdx >= 0 ? mentionSelIdx : 0);
+      }
+    } else if (e.key === 'Escape') {
+      e.stopPropagation();
+      closeMention();
+    }
+  });
+
+  textarea.addEventListener('blur', function () {
+    setTimeout(closeMention, 150);
+  });
+
   cancelBtn.addEventListener('click', closeModal);
   saveBtn.addEventListener('click', saveModal);
   backdrop.addEventListener('mousedown', function (e) {
@@ -525,6 +592,231 @@
 
   function trapFocus(e) {
     const focusables = [textarea, cancelBtn, saveBtn];
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && active === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // @ file mention autocomplete
+  // ---------------------------------------------------------------------------
+  let mentionActive = false;
+  let mentionStart = -1;
+  let mentionFiles = [];
+  let mentionSelIdx = -1;
+
+  function closeMention() {
+    mentionActive = false;
+    mentionStart = -1;
+    mentionFiles = [];
+    mentionSelIdx = -1;
+    mentionListEl.hidden = true;
+    mentionListEl.innerHTML = '';
+  }
+
+  function renderMentionItems() {
+    mentionListEl.innerHTML = '';
+    if (mentionFiles.length === 0) {
+      mentionListEl.hidden = true;
+      return;
+    }
+    mentionFiles.forEach(function (file, i) {
+      const li = document.createElement('li');
+      li.className = 'mdc-mention-item';
+      li.setAttribute('role', 'option');
+      const rel = file.rel || file;
+      const lastSlash = rel.lastIndexOf('/');
+      const name = lastSlash >= 0 ? rel.slice(lastSlash + 1) : rel;
+      const dir = lastSlash >= 0 ? rel.slice(0, lastSlash + 1) : '';
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'mdc-mention-name';
+      nameSpan.textContent = name;
+      li.appendChild(nameSpan);
+      if (dir) {
+        const pathSpan = document.createElement('span');
+        pathSpan.className = 'mdc-mention-path';
+        pathSpan.textContent = dir;
+        li.appendChild(pathSpan);
+      }
+      li.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        acceptMention(i);
+      });
+      mentionListEl.appendChild(li);
+    });
+    mentionListEl.hidden = false;
+  }
+
+  function setMentionSel(idx) {
+    const items = mentionListEl.querySelectorAll('.mdc-mention-item');
+    items.forEach(function (item, i) {
+      item.classList.toggle('mdc-mention-item-active', i === idx);
+      if (i === idx) {
+        item.scrollIntoView({ block: 'nearest' });
+      }
+    });
+    mentionSelIdx = idx;
+  }
+
+  function moveMentionSel(delta) {
+    const count = mentionFiles.length;
+    if (count === 0) {
+      return;
+    }
+    let next = mentionSelIdx + delta;
+    if (next < 0) {
+      next = count - 1;
+    }
+    if (next >= count) {
+      next = 0;
+    }
+    setMentionSel(next);
+  }
+
+  function acceptMention(idx) {
+    const file = mentionFiles[idx];
+    if (!file) {
+      return;
+    }
+    const rel = file.rel || file;
+    const link = file.link || rel;
+    const lastSlash = rel.lastIndexOf('/');
+    const name = lastSlash >= 0 ? rel.slice(lastSlash + 1) : rel;
+    const insert = '[' + name + '](' + link + ')';
+    const pos = textarea.selectionStart;
+    const before = textarea.value.slice(0, mentionStart);
+    const after = textarea.value.slice(pos);
+    textarea.value = before + insert + after;
+    const newPos = mentionStart + insert.length;
+    textarea.setSelectionRange(newPos, newPos);
+    closeMention();
+    saveDraft();
+    textarea.focus();
+  }
+
+  function checkMention() {
+    const pos = textarea.selectionStart;
+    const text = textarea.value;
+    let atPos = -1;
+    for (let i = pos - 1; i >= 0; i--) {
+      const ch = text[i];
+      if (ch === '@') {
+        atPos = i;
+        break;
+      }
+      if (/[\s\n]/.test(ch)) {
+        break;
+      }
+    }
+    if (atPos === -1) {
+      if (mentionActive) {
+        closeMention();
+      }
+      return;
+    }
+    mentionActive = true;
+    mentionStart = atPos;
+    const query = text.slice(atPos + 1, pos);
+    vscode.postMessage({ type: 'queryWorkspaceFiles', query: query });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Markdown source editor
+  // ---------------------------------------------------------------------------
+  const mdEditBackdrop = document.createElement('div');
+  mdEditBackdrop.className = 'mdc-modal-backdrop';
+  mdEditBackdrop.hidden = true;
+  mdEditBackdrop.innerHTML =
+    '<div class="mdc-modal" role="dialog" aria-modal="false" aria-labelledby="mdc-mdedit-title">' +
+    '<h2 id="mdc-mdedit-title" class="mdc-modal-title">Edit markdown source</h2>' +
+    '<textarea id="mdc-mdedit-textarea" class="mdc-modal-textarea mdc-mdedit-textarea" rows="12" ' +
+    'placeholder="Markdown source…" aria-label="Markdown source"></textarea>' +
+    '<div class="mdc-modal-foot">' +
+    '<div class="mdc-modal-hint"><kbd>Esc</kbd> to discard · <kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd> to save</div>' +
+    '<div class="mdc-modal-buttons">' +
+    '<button type="button" class="mdc-modal-cancel mdc-mdedit-cancel">Discard</button>' +
+    '<button type="button" class="mdc-modal-save mdc-mdedit-save" disabled>Save</button>' +
+    '</div>' +
+    '</div>' +
+    '</div>';
+  document.body.appendChild(mdEditBackdrop);
+
+  const mdEditModalEl = mdEditBackdrop.querySelector('.mdc-modal');
+  const mdEditTextarea = mdEditBackdrop.querySelector('.mdc-mdedit-textarea');
+  const mdEditCancelBtn = mdEditBackdrop.querySelector('.mdc-mdedit-cancel');
+  const mdEditSaveBtn = mdEditBackdrop.querySelector('.mdc-mdedit-save');
+
+  let mdEditOriginal = '';
+  let mdEditSourceLine = -1;
+  let mdEditSourceEnd = -1;
+
+  function updateMdSaveBtn() {
+    mdEditSaveBtn.disabled = mdEditTextarea.value === mdEditOriginal;
+  }
+
+  function openMdEditor(text, sourceLine, sourceEnd) {
+    mdEditOriginal = text;
+    mdEditSourceLine = sourceLine;
+    mdEditSourceEnd = sourceEnd;
+    mdEditTextarea.value = text;
+    mdEditBackdrop.hidden = false;
+    document.body.classList.add('mdc-popup-open');
+    const barH = mdEditModalEl.getBoundingClientRect().height;
+    document.documentElement.style.setProperty('--mdc-popup-pad', barH + 24 + 'px');
+    updateMdSaveBtn();
+    updateAiBarVisibility();
+    mdEditTextarea.focus();
+    mdEditTextarea.setSelectionRange(0, 0);
+    mdEditTextarea.scrollTop = 0;
+  }
+
+  function closeMdEditor() {
+    mdEditBackdrop.hidden = true;
+    document.body.classList.remove('mdc-popup-open');
+    updateAiBarVisibility();
+  }
+
+  function saveMdEditor() {
+    if (mdEditSaveBtn.disabled) {
+      return;
+    }
+    vscode.postMessage({
+      type: 'saveBlockMarkdown',
+      text: mdEditTextarea.value,
+      sourceLine: mdEditSourceLine,
+      sourceEnd: mdEditSourceEnd,
+      docVersion: docVersion,
+    });
+    mdEditOriginal = mdEditTextarea.value;
+    updateMdSaveBtn();
+  }
+
+  mdEditTextarea.addEventListener('input', updateMdSaveBtn);
+  mdEditCancelBtn.addEventListener('click', closeMdEditor);
+  mdEditSaveBtn.addEventListener('click', saveMdEditor);
+
+  mdEditBackdrop.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeMdEditor();
+    } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      saveMdEditor();
+    } else if (e.key === 'Tab') {
+      mdEditTrapFocus(e);
+    }
+  });
+
+  function mdEditTrapFocus(e) {
+    const focusables = [mdEditTextarea, mdEditCancelBtn, mdEditSaveBtn];
     const first = focusables[0];
     const last = focusables[focusables.length - 1];
     const active = document.activeElement;
@@ -833,7 +1125,7 @@
   // progress), and never over the docked add/edit editor (same bottom strip).
   function updateAiBarVisibility() {
     const hasComments = !!content.querySelector('.mdc-comment');
-    const modalOpen = !backdrop.hidden;
+    const modalOpen = !backdrop.hidden || !mdEditBackdrop.hidden;
     const active = aiPhase !== 'idle';
     aiBar.hidden = !(aiConfig && (hasComments || active) && !modalOpen);
   }
@@ -1122,6 +1414,9 @@
     if (!backdrop.hidden) {
       e.preventDefault();
       closeModal();
+    } else if (!mdEditBackdrop.hidden) {
+      e.preventDefault();
+      closeMdEditor();
     } else if (searchIsOpen()) {
       e.preventDefault();
       closeSearch();
@@ -1213,8 +1508,15 @@
       onAiInfo(msg);
     } else if (msg.type === 'aiStatus') {
       onAiStatus(msg);
+    } else if (msg.type === 'blockMarkdownContent') {
+      openMdEditor(msg.text, msg.sourceLine, msg.sourceEnd);
     } else if (msg.type === 'error') {
       showToast(msg.message);
+    } else if (msg.type === 'workspaceFiles') {
+      if (mentionActive) {
+        mentionFiles = msg.files || [];
+        renderMentionItems();
+      }
     }
   });
 

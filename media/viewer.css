@@ -412,6 +412,15 @@ mark.mdc-search-hit-current {
   outline-offset: 1px;
 }
 
+.mdc-edit-block-affordance {
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  background: var(--vscode-button-secondaryBackground, rgba(127, 127, 127, 0.55));
+}
+
+.mdc-edit-block-affordance:hover {
+  background: var(--vscode-button-secondaryHoverBackground, rgba(127, 127, 127, 0.75));
+}
+
 /* ---- unsaved-draft marker ----------------------------------------------
    A small pencil badge in the left margin of any block (or comment bubble)
    that has an in-progress, not-yet-saved comment draft stashed for it. */
@@ -637,6 +646,76 @@ body.mdc-popup-open .mdc-toast {
 
 .mdc-modal-save:hover {
   background: var(--vscode-button-hoverBackground, #1177bb);
+}
+
+.mdc-modal-save:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mdc-modal-save:disabled:hover {
+  background: var(--vscode-button-background, #0e639c);
+}
+
+.mdc-mdedit-textarea {
+  font-family: var(--vscode-editor-font-family, "SF Mono", Menlo, Consolas, "Courier New", monospace);
+  font-size: 0.88em;
+}
+
+/* ---- @ file mention picker ------------------------------------------------ */
+.mdc-textarea-wrap {
+  position: relative;
+}
+
+.mdc-mention-list {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  top: auto;
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 2px 0;
+  list-style: none;
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, rgba(127, 127, 127, 0.35)));
+  border-radius: 4px;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.25);
+  z-index: 10;
+}
+
+.mdc-mention-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  padding: 0.3em 0.7em;
+  cursor: pointer;
+  font-size: 0.88em;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.mdc-mention-item:hover,
+.mdc-mention-item-active {
+  background: var(--vscode-list-hoverBackground, rgba(127, 127, 127, 0.12));
+}
+
+.mdc-mention-name {
+  font-weight: 500;
+  color: var(--vscode-editor-foreground);
+  flex-shrink: 0;
+}
+
+.mdc-mention-path {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+  text-overflow: ellipsis;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mdc-modal-buttons button:focus-visible,
@@ -1598,4 +1677,175 @@ body.mdc-theme-dark .mdc-content mark.mdc-search-hit-current {
   color: #ffffff;
   background: rgba(234, 92, 0, 0.66);
   outline: 1px solid #007fd4;
+}
+
+/* ===========================================================================
+   Syntax highlighting — highlight.js token colors (GitHub light / dark).
+   A set of CSS custom properties is painted on <body> for each theme, then a
+   single shared set of token-color rules reads those variables. No duplication
+   of the selector lists per theme; the cascade handles switching.
+
+   Order matters: the forced mdc-theme-* rules come after the vscode-* rules so
+   they win when both match (e.g. a dark workbench + a forced light viewer theme).
+   =========================================================================== */
+
+/* -- Light palette (GitHub light) -----------------------------------------
+   Applied when the workbench is light (default "vscode" theme) or a forced
+   light viewer theme is active. */
+body.vscode-light,
+body.vscode-high-contrast-light {
+  --mdc-hljs-keyword:    #d73a49;
+  --mdc-hljs-entity:     #6f42c1;
+  --mdc-hljs-constant:   #005cc5;
+  --mdc-hljs-string:     #032f62;
+  --mdc-hljs-variable:   #e36209;
+  --mdc-hljs-comment:    #6a737d;
+  --mdc-hljs-tag:        #22863a;
+  --mdc-hljs-subst:      #24292e;
+  --mdc-hljs-add-color:  #22863a;
+  --mdc-hljs-add-bg:     #f0fff4;
+  --mdc-hljs-del-color:  #b31d28;
+  --mdc-hljs-del-bg:     #ffeef0;
+}
+
+/* -- Dark palette (GitHub dark) -------------------------------------------
+   Applied when the workbench is dark (default "vscode" theme) or a forced
+   dark viewer theme is active. */
+body.vscode-dark,
+body.vscode-high-contrast {
+  --mdc-hljs-keyword:    #ff7b72;
+  --mdc-hljs-entity:     #d2a8ff;
+  --mdc-hljs-constant:   #79c0ff;
+  --mdc-hljs-string:     #a5d6ff;
+  --mdc-hljs-variable:   #ffa657;
+  --mdc-hljs-comment:    #8b949e;
+  --mdc-hljs-tag:        #7ee787;
+  --mdc-hljs-subst:      #c9d1d9;
+  --mdc-hljs-add-color:  #aff5b4;
+  --mdc-hljs-add-bg:     #033a16;
+  --mdc-hljs-del-color:  #ffdcd7;
+  --mdc-hljs-del-bg:     #67060c;
+}
+
+/* Forced light themes — override the vscode-* palette set above. */
+body.mdc-theme-light,
+body.mdc-theme-light-modern {
+  --mdc-hljs-keyword:    #d73a49;
+  --mdc-hljs-entity:     #6f42c1;
+  --mdc-hljs-constant:   #005cc5;
+  --mdc-hljs-string:     #032f62;
+  --mdc-hljs-variable:   #e36209;
+  --mdc-hljs-comment:    #6a737d;
+  --mdc-hljs-tag:        #22863a;
+  --mdc-hljs-subst:      #24292e;
+  --mdc-hljs-add-color:  #22863a;
+  --mdc-hljs-add-bg:     #f0fff4;
+  --mdc-hljs-del-color:  #b31d28;
+  --mdc-hljs-del-bg:     #ffeef0;
+}
+
+/* Forced dark themes — override the vscode-* palette set above. */
+body.mdc-theme-dark,
+body.mdc-theme-dark-modern {
+  --mdc-hljs-keyword:    #ff7b72;
+  --mdc-hljs-entity:     #d2a8ff;
+  --mdc-hljs-constant:   #79c0ff;
+  --mdc-hljs-string:     #a5d6ff;
+  --mdc-hljs-variable:   #ffa657;
+  --mdc-hljs-comment:    #8b949e;
+  --mdc-hljs-tag:        #7ee787;
+  --mdc-hljs-subst:      #c9d1d9;
+  --mdc-hljs-add-color:  #aff5b4;
+  --mdc-hljs-add-bg:     #033a16;
+  --mdc-hljs-del-color:  #ffdcd7;
+  --mdc-hljs-del-bg:     #67060c;
+}
+
+/* -- Token color rules — read the variables set above --------------------- */
+
+.mdc-content .hljs-doctag,
+.mdc-content .hljs-keyword,
+.mdc-content .hljs-meta .hljs-keyword,
+.mdc-content .hljs-template-tag,
+.mdc-content .hljs-template-variable,
+.mdc-content .hljs-type,
+.mdc-content .hljs-variable.language_ {
+  color: var(--mdc-hljs-keyword);
+}
+
+.mdc-content .hljs-title,
+.mdc-content .hljs-title.class_,
+.mdc-content .hljs-title.class_.inherited__,
+.mdc-content .hljs-title.function_ {
+  color: var(--mdc-hljs-entity);
+}
+
+.mdc-content .hljs-attr,
+.mdc-content .hljs-attribute,
+.mdc-content .hljs-literal,
+.mdc-content .hljs-meta,
+.mdc-content .hljs-number,
+.mdc-content .hljs-operator,
+.mdc-content .hljs-variable,
+.mdc-content .hljs-selector-attr,
+.mdc-content .hljs-selector-class,
+.mdc-content .hljs-selector-id {
+  color: var(--mdc-hljs-constant);
+}
+
+.mdc-content .hljs-regexp,
+.mdc-content .hljs-string,
+.mdc-content .hljs-meta .hljs-string {
+  color: var(--mdc-hljs-string);
+}
+
+.mdc-content .hljs-built_in,
+.mdc-content .hljs-symbol {
+  color: var(--mdc-hljs-variable);
+}
+
+.mdc-content .hljs-comment,
+.mdc-content .hljs-code,
+.mdc-content .hljs-formula {
+  color: var(--mdc-hljs-comment);
+}
+
+.mdc-content .hljs-name,
+.mdc-content .hljs-quote,
+.mdc-content .hljs-selector-tag,
+.mdc-content .hljs-selector-pseudo {
+  color: var(--mdc-hljs-tag);
+}
+
+.mdc-content .hljs-subst {
+  color: var(--mdc-hljs-subst);
+}
+
+.mdc-content .hljs-section {
+  color: var(--mdc-hljs-constant);
+  font-weight: bold;
+}
+
+.mdc-content .hljs-bullet {
+  color: var(--mdc-hljs-variable);
+}
+
+.mdc-content .hljs-emphasis {
+  color: var(--mdc-hljs-subst);
+  font-style: italic;
+}
+
+.mdc-content .hljs-strong {
+  color: var(--mdc-hljs-subst);
+  font-weight: bold;
+}
+
+.mdc-content .hljs-addition {
+  color: var(--mdc-hljs-add-color);
+  background-color: var(--mdc-hljs-add-bg);
+}
+
+.mdc-content .hljs-deletion {
+  color: var(--mdc-hljs-del-color);
+  background-color: var(--mdc-hljs-del-bg);
 }

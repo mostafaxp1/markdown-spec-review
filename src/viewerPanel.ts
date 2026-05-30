@@ -490,6 +490,15 @@ export class CommentViewerPanel {
       case 'openLink':
         await this.handleOpenLink(msg);
         break;
+      case 'requestBlockMarkdown':
+        await this.handleRequestBlockMarkdown(msg);
+        break;
+      case 'saveBlockMarkdown':
+        await this.handleSaveBlockMarkdown(msg);
+        break;
+      case 'queryWorkspaceFiles':
+        await this.handleQueryWorkspaceFiles(msg);
+        break;
     }
   }
 
@@ -636,6 +645,89 @@ export class CommentViewerPanel {
     }
     await maybeAutoSaveComment(doc);
     await this.postUpdate(doc);
+  }
+
+  private async handleRequestBlockMarkdown(msg: any): Promise<void> {
+    const doc = await this.getDocument();
+    if (!doc) {
+      this.postError('Document is not available.', 'GENERIC');
+      return;
+    }
+    const sourceLine = Number(msg.sourceLine);
+    const sourceEnd = Number(msg.sourceEnd);
+    if (!Number.isFinite(sourceLine) || !Number.isFinite(sourceEnd)) {
+      return;
+    }
+    const lastLine = Math.min(sourceEnd - 1, doc.lineCount - 1);
+    const blockRange = new vscode.Range(
+      new vscode.Position(sourceLine, 0),
+      new vscode.Position(lastLine, doc.lineAt(lastLine).text.length)
+    );
+    this.panel.webview.postMessage({
+      type: 'blockMarkdownContent',
+      text: doc.getText(blockRange),
+      sourceLine,
+      sourceEnd,
+      version: doc.version,
+    });
+  }
+
+  private async handleSaveBlockMarkdown(msg: any): Promise<void> {
+    const doc = await this.getDocument();
+    if (!doc) {
+      this.postError('Document is not available.', 'GENERIC');
+      return;
+    }
+    if (doc.version !== msg.docVersion) {
+      await this.staleRetry(doc);
+      return;
+    }
+    const sourceLine = Number(msg.sourceLine);
+    const sourceEnd = Number(msg.sourceEnd);
+    if (!Number.isFinite(sourceLine) || !Number.isFinite(sourceEnd)) {
+      return;
+    }
+    const text = String(msg.text ?? '');
+    const lastLine = Math.min(sourceEnd - 1, doc.lineCount - 1);
+    const blockRange = new vscode.Range(
+      new vscode.Position(sourceLine, 0),
+      new vscode.Position(lastLine, doc.lineAt(lastLine).text.length)
+    );
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(doc.uri, blockRange, text);
+    if (!(await vscode.workspace.applyEdit(edit))) {
+      this.postError('Could not save the block.', 'GENERIC');
+      return;
+    }
+    await maybeAutoSaveComment(doc);
+  }
+
+  private async handleQueryWorkspaceFiles(msg: any): Promise<void> {
+    const query = typeof msg.query === 'string' ? msg.query.toLowerCase() : '';
+    const include = query ? `**/*${query}*` : '**/*';
+    try {
+      const uris = await vscode.workspace.findFiles(
+        include,
+        '{**/node_modules/**,**/.git/**,**/.vscode/**}',
+        50
+      );
+      const folder = vscode.workspace.workspaceFolders?.[0];
+      const docDir = this.uri.scheme === 'file' ? path.dirname(this.uri.fsPath) : null;
+      const files = uris
+        .map((uri) => {
+          const rel = folder ? vscode.workspace.asRelativePath(uri, false) : uri.fsPath;
+          let link = rel;
+          if (docDir && uri.scheme === 'file') {
+            const linkRaw = path.relative(docDir, uri.fsPath).split(path.sep).join('/');
+            link = linkRaw.startsWith('.') ? linkRaw : './' + linkRaw;
+          }
+          return { rel, link };
+        })
+        .sort((a, b) => a.rel.localeCompare(b.rel));
+      this.panel.webview.postMessage({ type: 'workspaceFiles', files });
+    } catch {
+      this.panel.webview.postMessage({ type: 'workspaceFiles', files: [] });
+    }
   }
 
   private async handleReveal(msg: any): Promise<void> {

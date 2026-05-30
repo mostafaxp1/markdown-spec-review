@@ -276,6 +276,7 @@
     "rebuild": "npm run compile && npm_config_cache=/tmp/npmcache-mc npx --yes @vscode/vsce package && code --install-extension *.vsix --force"
   },
   "dependencies": {
+    "highlight.js": "^11.11.1",
     "markdown-it": "^14.2.0"
   },
   "devDependencies": {
