@@ -1,0 +1,22 @@
+--- /tmp/orig_viewerPanel.ts	2026-05-30 15:49:12
++++ src/viewerPanel.ts	2026-05-30 15:49:19
+@@ -882,6 +882,19 @@
+   <title>Markdown Comments</title>
+ </head>
+ <body class="${themeClass}" data-doc-version="${this.renderedVersion}">
++  <div class="mdc-toolbar">
++    <div class="mdc-search" role="search">
++      <input id="mdc-search-input" class="mdc-search-input" type="text"
++        placeholder="Search comments…" aria-label="Search comments" />
++      <span id="mdc-search-count" class="mdc-search-count" aria-live="polite"></span>
++      <button type="button" id="mdc-search-prev" class="mdc-search-btn"
++        title="Previous match (Shift+Enter)" aria-label="Previous match">▲</button>
++      <button type="button" id="mdc-search-next" class="mdc-search-btn"
++        title="Next match (Enter)" aria-label="Next match">▼</button>
++      <button type="button" id="mdc-search-clear" class="mdc-search-btn mdc-search-clear"
++        title="Clear search" aria-label="Clear search">×</button>
++    </div>
++  </div>
+   <div id="mdc-empty" class="mdc-empty" hidden>
+     No comments yet. Hover any heading or paragraph and click the <strong>+</strong> to add one.
+   </div>

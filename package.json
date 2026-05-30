@@ -1,0 +1,282 @@
+{
+  "name": "markdown-comments",
+  "displayName": "Markdown Comments",
+  "description": "Add review comments to headings and paragraphs in Markdown files. Comments are stored inline (invisible to other renderers) and shown as bubbles in the built-in Markdown preview.",
+  "version": "0.1.0",
+  "publisher": "mostafa",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "markdown",
+    "comments",
+    "review",
+    "annotations",
+    "preview"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
+  "contributes": {
+    "markdown.markdownItPlugins": true,
+    "markdown.previewStyles": [
+      "./media/preview.css"
+    ],
+    "markdown.previewScripts": [
+      "./media/preview.js"
+    ],
+    "commands": [
+      {
+        "command": "markdownComments.addComment",
+        "title": "Add Comment",
+        "category": "Markdown Comments"
+      },
+      {
+        "command": "markdownComments.removeComment",
+        "title": "Remove Comment at Cursor",
+        "category": "Markdown Comments"
+      },
+      {
+        "command": "markdownComments.editComment",
+        "title": "Edit Comment at Cursor",
+        "category": "Markdown Comments"
+      },
+      {
+        "command": "markdownComments.openInteractiveView",
+        "title": "Open Interactive Comments View",
+        "category": "Markdown Comments",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "markdownComments.revertToSource",
+        "title": "Show Markdown Source",
+        "category": "Markdown Comments",
+        "icon": "$(code)"
+      },
+      {
+        "command": "markdownComments.addressComments",
+        "title": "Address Comments with AI",
+        "category": "Markdown Comments",
+        "icon": "$(sparkle)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "markdownComments.openInteractiveView",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "markdownComments.revertToSource",
+          "when": "activeWebviewPanelId == 'markdownComments.interactiveView'"
+        },
+        {
+          "command": "markdownComments.addressComments",
+          "when": "activeWebviewPanelId == 'markdownComments.interactiveView'"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "markdownComments.openInteractiveView",
+          "when": "resourceLangId == markdown",
+          "group": "navigation@1"
+        },
+        {
+          "command": "markdownComments.revertToSource",
+          "when": "activeWebviewPanelId == 'markdownComments.interactiveView'",
+          "group": "navigation@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "markdownComments.addComment",
+          "when": "editorLangId == markdown",
+          "group": "1_modification@10"
+        },
+        {
+          "command": "markdownComments.editComment",
+          "when": "editorLangId == markdown",
+          "group": "1_modification@11"
+        },
+        {
+          "command": "markdownComments.removeComment",
+          "when": "editorLangId == markdown",
+          "group": "1_modification@12"
+        },
+        {
+          "command": "markdownComments.openInteractiveView",
+          "when": "editorLangId == markdown",
+          "group": "navigation@1"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "markdownComments.addComment",
+        "key": "ctrl+alt+m",
+        "mac": "cmd+alt+m",
+        "when": "editorLangId == markdown && editorTextFocus || activeWebviewPanelId == 'markdownComments.interactiveView'"
+      },
+      {
+        "command": "markdownComments.openInteractiveView",
+        "key": "alt+shift+v",
+        "mac": "alt+shift+v",
+        "when": "editorLangId == markdown && editorTextFocus"
+      },
+      {
+        "command": "markdownComments.revertToSource",
+        "key": "alt+shift+v",
+        "mac": "alt+shift+v",
+        "when": "activeWebviewPanelId == 'markdownComments.interactiveView'"
+      }
+    ],
+    "configuration": {
+      "title": "Markdown Comments",
+      "properties": {
+        "markdownComments.author": {
+          "type": "string",
+          "default": "",
+          "description": "Name attached to new comments. If empty, falls back to your OS username."
+        },
+        "markdownComments.dateFormat": {
+          "type": "string",
+          "enum": [
+            "date",
+            "datetime",
+            "none"
+          ],
+          "default": "date",
+          "description": "Timestamp stored with new comments: date only, full datetime, or none."
+        },
+        "markdownComments.autoSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically save the Markdown file after adding, editing, or removing a comment. Untitled (never-saved) files are left for you to save manually."
+        },
+        "markdownComments.viewer.fontSize": {
+          "type": "number",
+          "default": 15,
+          "minimum": 8,
+          "maximum": 40,
+          "description": "Font size (in pixels) for text in the Interactive Comments View."
+        },
+        "markdownComments.viewer.maxWidth": {
+          "type": "number",
+          "default": 1100,
+          "minimum": 0,
+          "description": "Maximum width (in pixels) of the content column in the Interactive Comments View. Use 0 for full width."
+        },
+        "markdownComments.viewer.colorTheme": {
+          "type": "string",
+          "enum": [
+            "vscode",
+            "light",
+            "dark",
+            "light-modern",
+            "dark-modern"
+          ],
+          "enumItemLabels": [
+            "Follow VS Code Theme",
+            "Light+",
+            "Dark+",
+            "Light Modern",
+            "Dark Modern"
+          ],
+          "enumDescriptions": [
+            "Follow the current VS Code color theme.",
+            "Always use Light+ preview colors, regardless of the editor theme.",
+            "Always use Dark+ preview colors, regardless of the editor theme.",
+            "Always use Light Modern preview colors, regardless of the editor theme.",
+            "Always use Dark Modern preview colors, regardless of the editor theme."
+          ],
+          "default": "vscode",
+          "description": "Color scheme for the Interactive Comments View tab only. Lets you read a Markdown file in a fixed light/dark scheme while the rest of VS Code stays on your chosen theme."
+        },
+        "markdownComments.ai.agent": {
+          "type": "string",
+          "enum": [
+            "claude-code",
+            "codex",
+            "copilot",
+            "antigravity"
+          ],
+          "enumItemLabels": [
+            "Claude Code",
+            "Codex",
+            "GitHub Copilot CLI",
+            "Antigravity"
+          ],
+          "enumDescriptions": [
+            "Anthropic Claude Code CLI (the `claude` command).",
+            "OpenAI Codex CLI (the `codex` command).",
+            "GitHub Copilot CLI (the `copilot` command).",
+            "Google Antigravity CLI (the `antigravity` command)."
+          ],
+          "default": "claude-code",
+          "description": "Coding agent used by the \"Address comments\" button to revise the document in response to your review comments. The agent's CLI must be installed and on your PATH (or pointed at via markdownComments.ai.commands)."
+        },
+        "markdownComments.ai.runMode": {
+          "type": "string",
+          "enum": [
+            "terminal",
+            "headless"
+          ],
+          "enumItemLabels": [
+            "In a VS Code terminal",
+            "Headless (auto-apply)"
+          ],
+          "enumDescriptions": [
+            "Run the agent in an integrated terminal so you can watch it work and approve as it goes.",
+            "Run the agent in the background non-interactively; it edits the file automatically and the view refreshes when it finishes."
+          ],
+          "default": "terminal",
+          "description": "How the \"Address comments\" agent runs."
+        },
+        "markdownComments.ai.model": {
+          "type": "string",
+          "default": "",
+          "description": "Default model for the \"Address comments\" agent. Leave empty to use the agent's own default. You can also pick a model per run from the bar in the Interactive Comments View; the dropdown is populated from the installed agent."
+        },
+        "markdownComments.ai.effort": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "default": "medium",
+          "description": "Default reasoning effort for the \"Address comments\" agent. Maps to a native flag where the agent supports one (e.g. Codex's model_reasoning_effort) and to a thinking hint in the prompt otherwise."
+        },
+        "markdownComments.ai.commands": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "string"
+          },
+          "markdownDescription": "Override the executable used for each agent, keyed by agent id (`claude-code`, `codex`, `copilot`, `antigravity`). Use this when the CLI is not on your PATH or has a different name, e.g. `{ \"claude-code\": \"/usr/local/bin/claude\" }`.",
+          "description": "Override the executable used for each agent, keyed by agent id (claude-code, codex, copilot, antigravity). Use this when the CLI is not on your PATH or has a different name."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "rebuild": "npm run compile && npm_config_cache=/tmp/npmcache-mc npx --yes @vscode/vsce package && code --install-extension *.vsix --force"
+  },
+  "dependencies": {
+    "markdown-it": "^14.2.0"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^20.19.41",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.5"
+  }
+}

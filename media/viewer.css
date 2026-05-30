@@ -1,0 +1,1577 @@
+/* Interactive Comments view — chrome layered on top of preview.css (which is
+   <link>ed first and supplies the .mdc-comment bubble look). Only the
+   interactive affordances live here. The base rules use --vscode-* theme
+   variables so the default ("vscode") theme matches the workbench; the forced
+   color themes at the bottom of this file override them with static colors. */
+
+body {
+  margin: 0;
+  padding: 1.6rem 1.6rem 4rem;
+  font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif);
+  font-size: var(--mdc-font-size, 15px);
+  line-height: 1.65;
+  color: var(--vscode-editor-foreground, var(--vscode-foreground));
+}
+
+.mdc-content {
+  position: relative;
+  max-width: var(--mdc-content-max-width, 1100px);
+  margin: 0 auto;
+}
+
+/* ---- toolbar + in-view find bar -----------------------------------------
+   A slim bar pinned to the top of the view holding the search controls. The
+   search box mirrors the popup / AI-bar chrome (input + secondary buttons),
+   themed via --vscode-* so it matches the workbench by default. */
+.mdc-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6em;
+  margin: -1.6rem -1.6rem 1rem;
+  padding: 0.5rem 1.6rem;
+  background: var(--vscode-editor-background, var(--vscode-editorWidget-background));
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(127, 127, 127, 0.25));
+}
+
+/* The bulk "Remove resolved" action sits beside the find bar; it is hidden by
+   the webview when no comment is resolved. Its second (confirm) click turns it
+   into a destructive button so an accidental click can't wipe comments. */
+.mdc-remove-resolved.mdc-confirm {
+  color: var(--vscode-button-foreground, #fff);
+  background: var(--vscode-errorForeground, #c4314b);
+  border-color: transparent;
+}
+
+.mdc-search {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+}
+
+/* The find bar is collapsed by default and revealed by the toolbar's search
+   toggle; the explicit rule is needed because `.mdc-search { display: flex }`
+   would otherwise win over the `[hidden]` user-agent rule. */
+.mdc-search[hidden] {
+  display: none;
+}
+
+/* The toggle carries an icon — center it and let it sit square. */
+.mdc-search-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mdc-search-toggle svg {
+  display: block;
+}
+
+.mdc-search-input {
+  font: inherit;
+  font-size: 0.85em;
+  width: 16em;
+  max-width: 40vw;
+  padding: 0.3em 0.5em;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border, rgba(127, 127, 127, 0.4)));
+  border-radius: 4px;
+}
+
+.mdc-search-input:focus {
+  outline: none;
+  border-color: var(--vscode-focusBorder);
+}
+
+.mdc-search-count {
+  min-width: 3.2em;
+  font-size: 0.78em;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--vscode-descriptionForeground);
+}
+
+.mdc-search-btn {
+  font: inherit;
+  font-size: 0.82em;
+  line-height: 1;
+  padding: 0.3em 0.5em;
+  cursor: pointer;
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  background: var(--vscode-button-secondaryBackground, rgba(127, 127, 127, 0.2));
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 4px;
+}
+
+.mdc-search-btn:hover {
+  background: var(--vscode-button-secondaryHoverBackground, rgba(127, 127, 127, 0.3));
+}
+
+.mdc-search-btn:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.mdc-search-clear {
+  font-size: 1em;
+}
+
+/* ---- search match highlights --------------------------------------------
+   .mdc-search-hit is the subtle highlight for every match; the current match
+   gets the stronger find-match fill plus an outline so it stands out as you
+   step through results. Text color is pinned so matches stay readable. */
+mark.mdc-search-hit {
+  padding: 0;
+  border-radius: 2px;
+  color: var(--vscode-editor-foreground, var(--vscode-foreground));
+  background: var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.33));
+}
+
+mark.mdc-search-hit-current {
+  color: var(--vscode-editor-foreground, var(--vscode-foreground));
+  background: var(--vscode-editor-findMatchBackground, rgba(234, 92, 0, 0.6));
+  outline: 1px solid var(--vscode-editor-findMatchBorder, var(--vscode-focusBorder, #3794ff));
+}
+
+/* ---- resolved comments --------------------------------------------------
+   A comment whose body carries a "Resolved:" line is tinted green and gets a
+   "✓ Resolved" pill in its head, so addressed comments are easy to spot and
+   sweep away. --mdc-resolved-accent is overridden per forced theme below. */
+.mdc-comment.mdc-resolved {
+  border-inline-start-color: var(--vscode-charts-green, #2ea043);
+  background:
+    linear-gradient(0deg, rgba(46, 160, 67, 0.12), rgba(46, 160, 67, 0.12)),
+    var(--vscode-textBlockQuote-background, rgba(127, 127, 127, 0.1));
+}
+
+.mdc-resolved-badge {
+  flex: 0 0 auto;
+  margin-inline-start: 0.2em;
+  padding: 0.05em 0.5em;
+  border-radius: 999px;
+  font-size: 0.72em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--vscode-charts-green, #2ea043);
+  background: rgba(46, 160, 67, 0.16);
+}
+
+/* ===========================================================================
+   Document typography — styling for the rendered Markdown itself. Scoped to
+   .mdc-content so the modal, toast and affordance chrome are unaffected. The
+   built-in preview gets VS Code's own stylesheet; a custom webview does not,
+   so we supply a comfortable reading style here, themed via --vscode-* vars.
+   =========================================================================== */
+
+.mdc-content > *:first-child {
+  margin-top: 0;
+}
+
+.mdc-content h1,
+.mdc-content h2,
+.mdc-content h3,
+.mdc-content h4,
+.mdc-content h5,
+.mdc-content h6 {
+  margin: 1.6em 0 0.6em;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.mdc-content h1 {
+  font-size: 1.9em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(127, 127, 127, 0.25));
+}
+
+.mdc-content h2 {
+  font-size: 1.5em;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(127, 127, 127, 0.2));
+}
+
+.mdc-content h3 {
+  font-size: 1.25em;
+}
+
+.mdc-content h4 {
+  font-size: 1.05em;
+}
+
+.mdc-content h5 {
+  font-size: 0.95em;
+}
+
+.mdc-content h6 {
+  font-size: 0.9em;
+  color: var(--vscode-descriptionForeground);
+}
+
+.mdc-content p {
+  margin: 0.7em 0;
+}
+
+.mdc-content a {
+  color: var(--vscode-textLink-foreground, #3794ff);
+  text-decoration: none;
+}
+
+.mdc-content a:hover {
+  color: var(--vscode-textLink-activeForeground, var(--vscode-textLink-foreground, #3794ff));
+  text-decoration: underline;
+}
+
+.mdc-content ul,
+.mdc-content ol {
+  margin: 0.6em 0;
+  padding-inline-start: 1.6em;
+}
+
+.mdc-content li {
+  margin: 0.25em 0;
+}
+
+.mdc-content li > p {
+  margin: 0.3em 0;
+}
+
+/* Inline code */
+.mdc-content code {
+  font-family: var(--vscode-editor-font-family, "SF Mono", Menlo, Consolas, "Courier New", monospace);
+  font-size: 0.94em;
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  /* Pin the text color to the (theme-overridden) foreground so a forced light
+     theme over a dark workbench doesn't leave pale text on the light box. */
+  color: var(--vscode-textPreformat-foreground, var(--vscode-editor-foreground));
+  background: var(--vscode-textCodeBlock-background, rgba(127, 127, 127, 0.16));
+  border: 0px solid var(--vscode-panel-border, rgba(127, 127, 127, 0.18));
+}
+
+/* Fenced / indented code blocks */
+.mdc-content pre {
+  margin: 0.9em 0;
+  padding: 1em 1em;
+  border-radius: 4px;
+  overflow-x: auto;
+  color: var(--vscode-editor-foreground);
+  background: var(--vscode-textCodeBlock-background, rgba(127, 127, 127, 0.12));
+  border: 1px solid var(--vscode-panel-border, rgba(127, 127, 127, 0.25));
+  line-height: 1.3;
+}
+
+.mdc-content pre code {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 0.94em;
+}
+
+/* Blockquote / call-out box */
+.mdc-content blockquote {
+  margin: 0.9em 0;
+  padding: 0.6em 1em;
+  font-size: 0.97em;
+  line-height: 1.6;
+  color: var(--vscode-descriptionForeground);
+  border-inline-start: 3px solid var(--vscode-textBlockQuote-border, var(--vscode-textLink-foreground, #3794ff));
+  background: var(--vscode-textBlockQuote-background, rgba(127, 127, 127, 0.08));
+  border-radius: 0 4px 4px 0;
+}
+
+.mdc-content blockquote > :first-child {
+  margin-top: 0;
+}
+
+.mdc-content blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+/* Highlighted text + text selection. Use a solid, theme-correct highlight with
+   an explicitly contrasting font color so highlighted words stay readable. */
+.mdc-content mark {
+  padding: 0 0.15em;
+  border-radius: 2px;
+  color: var(--mdc-mark-fg, var(--vscode-editor-foreground));
+  background: var(--mdc-mark-bg, var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.33)));
+}
+
+.mdc-content ::selection {
+  background: var(--vscode-editor-selectionBackground, rgba(55, 148, 255, 0.3));
+}
+
+/* Tables */
+.mdc-content table {
+  margin: 1em 0;
+  border-collapse: collapse;
+  max-width: 100%;
+}
+
+.mdc-content th,
+.mdc-content td {
+  padding: 0.4em 0.8em;
+  border: 1px solid var(--vscode-panel-border, rgba(127, 127, 127, 0.3));
+}
+
+.mdc-content th {
+  font-weight: 600;
+  /* Reuse the code-box fill (always tuned to be visible against the page) so
+     the header row never blends into the background — unlike editorWidget,
+     which in some themes (e.g. Dark Modern) is nearly identical to the page. */
+  background: var(--vscode-textCodeBlock-background, var(--vscode-editorWidget-background, rgba(127, 127, 127, 0.12)));
+}
+
+.mdc-content tbody tr:nth-child(2n) td {
+  background: rgba(127, 127, 127, 0.06);
+}
+
+/* Images & horizontal rules */
+.mdc-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.mdc-content hr {
+  margin: 1.6em 0;
+  border: none;
+  border-top: 1px solid var(--vscode-panel-border, rgba(127, 127, 127, 0.3));
+}
+
+/* Keyboard keys */
+.mdc-content kbd {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.85em;
+  padding: 0.1em 0.4em;
+  border: 1px solid var(--vscode-panel-border, rgba(127, 127, 127, 0.4));
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--vscode-keybindingLabel-background, rgba(127, 127, 127, 0.12));
+}
+
+/* Empty-state hint shown when the document has no comments yet. */
+.mdc-empty {
+  margin: 1.2rem 0;
+  padding: 0.8em 1em;
+  border: 1px dashed var(--vscode-panel-border, rgba(127, 127, 127, 0.35));
+  border-radius: 6px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.92em;
+}
+
+/* ---- floating "+" add affordance ---------------------------------------- */
+.mdc-add-affordance {
+  position: fixed;
+  z-index: 30;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  line-height: 20px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 50%;
+  color: var(--vscode-button-foreground, #fff);
+  background: var(--vscode-button-background, #0e639c);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  opacity: 0.9;
+}
+
+.mdc-add-affordance:hover {
+  opacity: 1;
+  background: var(--vscode-button-hoverBackground, #1177bb);
+}
+
+.mdc-add-affordance:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+/* ---- unsaved-draft marker ----------------------------------------------
+   A small pencil badge in the left margin of any block (or comment bubble)
+   that has an in-progress, not-yet-saved comment draft stashed for it. */
+.mdc-has-draft {
+  position: relative;
+}
+
+.mdc-has-draft::before {
+  content: '✎';
+  position: absolute;
+  top: 0.1em;
+  left: -1.6em;
+  z-index: 5;
+  width: 1.3em;
+  height: 1.3em;
+  line-height: 1.3em;
+  text-align: center;
+  font-size: 0.82em;
+  color: rgba(120, 90, 0, 0.85);
+  background: rgba(255, 200, 0, 0.45);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
+/* ---- inline edit / delete controls on each bubble ----------------------- */
+.mdc-comment-head {
+  position: relative;
+}
+
+.mdc-comment-actions {
+  margin-inline-start: auto;
+  display: inline-flex;
+  gap: 0.3em;
+  opacity: 0;
+  transition: opacity 0.1s ease-in-out;
+}
+
+.mdc-comment:hover .mdc-comment-actions,
+.mdc-comment:focus-within .mdc-comment-actions {
+  opacity: 1;
+}
+
+.mdc-action {
+  font: inherit;
+  font-size: 0.82em;
+  padding: 0.05em 0.5em;
+  cursor: pointer;
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  background: var(--vscode-button-secondaryBackground, rgba(127, 127, 127, 0.2));
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 4px;
+}
+
+.mdc-action:hover {
+  background: var(--vscode-button-secondaryHoverBackground, rgba(127, 127, 127, 0.3));
+}
+
+.mdc-action:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.mdc-action-delete.mdc-confirm {
+  color: var(--vscode-inputValidation-errorForeground, #fff);
+  background: var(--vscode-inputValidation-errorBackground, #be1100);
+  border-color: var(--vscode-inputValidation-errorBorder, #be1100);
+}
+
+/* When actions are hidden, don't let collapsed "…" jump around. */
+.mdc-comment.mdc-collapsed .mdc-comment-actions {
+  opacity: 1;
+}
+
+/* ---- post-save highlight flash ------------------------------------------ */
+@keyframes mdc-flash {
+  0% {
+    box-shadow: 0 0 0 2px var(--vscode-focusBorder, #3794ff);
+  }
+  100% {
+    box-shadow: 0 0 0 2px transparent;
+  }
+}
+
+.mdc-comment.mdc-flash {
+  animation: mdc-flash 1.2s ease-out;
+}
+
+/* ---- target highlight (block being commented on) ------------------------
+   Applied to the hovered block (add) or the comment bubble (edit) while the
+   docked editor is open, so the paragraph the comment targets stands out. */
+.mdc-target {
+  border-radius: 4px;
+  background: var(--mdc-target-bg, var(--vscode-editor-findMatchHighlightBackground, rgba(255, 200, 0, 0.18)));
+  box-shadow: 0 0 0 2px var(--mdc-target-ring, var(--vscode-focusBorder, #3794ff));
+  scroll-margin-top: 12px;
+}
+
+/* While the docked editor is open, reserve room at the bottom so the last
+   blocks can be scrolled clear of it, and lift the toast above the bar. */
+body.mdc-popup-open {
+  padding-bottom: var(--mdc-popup-pad, 220px);
+}
+
+body.mdc-popup-open .mdc-toast {
+  bottom: calc(var(--mdc-popup-pad, 220px) + 0.6rem);
+}
+
+/* ---- docked comment editor (add / edit) --------------------------------
+   A non-modal bar pinned to the bottom edge, full width. It deliberately does
+   NOT cover or dim the preview above it: only the bottom strip is occupied, so
+   the page stays readable, scrollable and clickable while you write. */
+.mdc-modal-backdrop {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+}
+
+.mdc-modal-backdrop[hidden] {
+  display: none;
+}
+
+.mdc-modal {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.8em 1.4em 0.95em;
+  border: none;
+  border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, rgba(127, 127, 127, 0.35)));
+  border-radius: 0;
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  color: var(--vscode-editor-foreground);
+  box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.28);
+}
+
+.mdc-modal-title {
+  margin: 0 0 0.4em;
+  font-size: 1.05em;
+  font-weight: 600;
+}
+
+.mdc-modal-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  max-height: 40vh;
+  font: inherit;
+  padding: 0.5em 0.6em;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border, rgba(127, 127, 127, 0.4)));
+  border-radius: 4px;
+}
+
+.mdc-modal-textarea:focus {
+  outline: none;
+  border-color: var(--vscode-focusBorder);
+}
+
+.mdc-modal-textarea.mdc-invalid {
+  border-color: var(--vscode-inputValidation-errorBorder, #be1100);
+}
+
+/* Hint and buttons share one compact row so the bar stays short. */
+.mdc-modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  margin-top: 0.55em;
+}
+
+.mdc-modal-hint {
+  margin: 0;
+  min-width: 0;
+  font-size: 0.8em;
+  color: var(--vscode-descriptionForeground);
+}
+
+.mdc-modal-hint kbd {
+  font-family: inherit;
+  padding: 0 0.3em;
+  border: 1px solid var(--vscode-panel-border, rgba(127, 127, 127, 0.4));
+  border-radius: 3px;
+}
+
+.mdc-modal-buttons {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  gap: 0.5em;
+}
+
+.mdc-modal-buttons button {
+  font: inherit;
+  padding: 0.35em 1em;
+  cursor: pointer;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-button-border, transparent);
+}
+
+.mdc-modal-cancel {
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  background: var(--vscode-button-secondaryBackground, rgba(127, 127, 127, 0.2));
+}
+
+.mdc-modal-cancel:hover {
+  background: var(--vscode-button-secondaryHoverBackground, rgba(127, 127, 127, 0.3));
+}
+
+.mdc-modal-save {
+  color: var(--vscode-button-foreground, #fff);
+  background: var(--vscode-button-background, #0e639c);
+}
+
+.mdc-modal-save:hover {
+  background: var(--vscode-button-hoverBackground, #1177bb);
+}
+
+.mdc-modal-buttons button:focus-visible,
+.mdc-modal-cancel:focus-visible,
+.mdc-modal-save:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+/* ---- transient error toast ---------------------------------------------- */
+.mdc-toast {
+  position: fixed;
+  z-index: 120;
+  left: 50%;
+  bottom: 1.4rem;
+  transform: translateX(-50%);
+  max-width: 80vw;
+  padding: 0.6em 1em;
+  border-radius: 6px;
+  font-size: 0.9em;
+  color: var(--vscode-inputValidation-errorForeground, var(--vscode-foreground));
+  background: var(--vscode-inputValidation-errorBackground, var(--vscode-editorWidget-background));
+  border: 1px solid var(--vscode-inputValidation-errorBorder, var(--vscode-panel-border, rgba(127, 127, 127, 0.4)));
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* ---- "Address comments" AI bar (bottom-right) --------------------------- */
+.mdc-ai-bar {
+  position: fixed;
+  z-index: 40;
+  right: 1.1rem;
+  bottom: 1.1rem;
+  max-width: min(92vw, 560px);
+  padding: 0.5em 0.6em;
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, rgba(127, 127, 127, 0.35)));
+  border-radius: 8px;
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.3);
+}
+
+.mdc-ai-bar[hidden] {
+  display: none;
+}
+
+.mdc-ai-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.mdc-ai-agent {
+  font-size: 0.82em;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--vscode-descriptionForeground);
+}
+
+.mdc-ai-select {
+  font: inherit;
+  font-size: 0.82em;
+  max-width: 11em;
+  padding: 0.25em 0.4em;
+  cursor: pointer;
+  color: var(--vscode-dropdown-foreground, var(--vscode-foreground));
+  background: var(--vscode-dropdown-background, var(--vscode-input-background));
+  border: 1px solid var(--vscode-dropdown-border, var(--vscode-input-border, rgba(127, 127, 127, 0.4)));
+  border-radius: 4px;
+}
+
+.mdc-ai-select:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.mdc-ai-run {
+  font: inherit;
+  font-size: 0.82em;
+  padding: 0.3em 0.85em;
+  cursor: pointer;
+  white-space: nowrap;
+  color: var(--vscode-button-foreground, #fff);
+  background: var(--vscode-button-background, #0e639c);
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 4px;
+}
+
+.mdc-ai-run:hover {
+  background: var(--vscode-button-hoverBackground, #1177bb);
+}
+
+.mdc-ai-run:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.mdc-ai-run:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* Secondary action (Review / Revert) — mirrors the bubble action buttons. */
+.mdc-ai-btn {
+  font: inherit;
+  font-size: 0.82em;
+  padding: 0.3em 0.7em;
+  cursor: pointer;
+  white-space: nowrap;
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  background: var(--vscode-button-secondaryBackground, rgba(127, 127, 127, 0.2));
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 4px;
+}
+
+.mdc-ai-btn:hover {
+  background: var(--vscode-button-secondaryHoverBackground, rgba(127, 127, 127, 0.3));
+}
+
+.mdc-ai-btn:focus-visible,
+.mdc-ai-stop:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+/* Stop — a clear "danger" affordance while a run is in flight. */
+.mdc-ai-stop {
+  font: inherit;
+  font-size: 0.82em;
+  padding: 0.3em 0.85em;
+  cursor: pointer;
+  white-space: nowrap;
+  color: var(--vscode-inputValidation-errorForeground, #fff);
+  background: var(--vscode-inputValidation-errorBackground, #be1100);
+  border: 1px solid var(--vscode-inputValidation-errorBorder, #be1100);
+  border-radius: 4px;
+}
+
+.mdc-ai-stop:hover {
+  filter: brightness(1.12);
+}
+
+/* Guarantee hidden controls collapse even though the row is a flex container. */
+.mdc-ai-row [hidden] {
+  display: none;
+}
+
+.mdc-ai-status {
+  margin-top: 0.4em;
+  font-size: 0.78em;
+  line-height: 1.4;
+  color: var(--vscode-descriptionForeground);
+}
+
+.mdc-ai-status[hidden] {
+  display: none;
+}
+
+.mdc-ai-status.mdc-ai-error {
+  color: var(--vscode-errorForeground, #f14c4c);
+}
+
+.mdc-ai-status.mdc-ai-done,
+.mdc-ai-status.mdc-ai-launched {
+  color: var(--vscode-charts-green, #89d185);
+}
+
+/* ===========================================================================
+   Forced color themes (markdownComments.viewer.colorTheme = light | dark |
+   light-modern | dark-modern). Default ("vscode") adds no class and inherits
+   the workbench theme via the --vscode-* variables the base rules above read.
+
+   Each forced theme below paints its palette with STATIC colors, scoped to a
+   class on <body>. The scoped selectors override the base rules' var(--vscode-*)
+   lookups directly — including the comment-bubble styles from preview.css —
+   so no workbench colors leak through. Only this tab is affected.
+   =========================================================================== */
+
+body.mdc-theme-light,
+body.mdc-theme-dark,
+body.mdc-theme-light-modern,
+body.mdc-theme-dark-modern {
+  min-height: 100vh;
+}
+
+/* VS Code "Light+" (Default Light+) palette — matches the classic built-in
+   Markdown preview: black body text, dark-red inline code (#a31515), a faint
+   grey code-block fill, and the #006ab1 link blue. color-scheme also keeps the
+   page scrollbar, the modal textarea and the caret light even when the
+   workbench theme is dark. */
+body.mdc-theme-light {
+  color-scheme: light;
+  background: #ffffff;
+  color: #000000;
+}
+body.mdc-theme-light .mdc-content pre,
+body.mdc-theme-light .mdc-modal,
+body.mdc-theme-light .mdc-comment {
+  color: #000000;
+}
+body.mdc-theme-light .mdc-comment-author {
+  color: #616161;
+}
+body.mdc-theme-light .mdc-content h6,
+body.mdc-theme-light .mdc-content blockquote,
+body.mdc-theme-light .mdc-empty,
+body.mdc-theme-light .mdc-modal-hint,
+body.mdc-theme-light .mdc-comment-head {
+  color: #717171;
+}
+body.mdc-theme-light .mdc-content h1,
+body.mdc-theme-light .mdc-content h2 {
+  border-bottom-color: rgba(128, 128, 128, 0.35);
+}
+body.mdc-theme-light .mdc-content hr {
+  border-top-color: rgba(128, 128, 128, 0.35);
+}
+body.mdc-theme-light .mdc-content pre,
+body.mdc-theme-light .mdc-content th,
+body.mdc-theme-light .mdc-content td,
+body.mdc-theme-light .mdc-content kbd,
+body.mdc-theme-light .mdc-empty,
+body.mdc-theme-light .mdc-modal-hint kbd {
+  border-color: rgba(128, 128, 128, 0.35);
+}
+body.mdc-theme-light .mdc-content a,
+body.mdc-theme-light .mdc-content a:hover,
+body.mdc-theme-light .mdc-comment-icon {
+  color: #006ab1;
+}
+body.mdc-theme-light .mdc-comment {
+  border-inline-start-color: #006ab1;
+}
+body.mdc-theme-light .mdc-content code {
+  color: #a31515;
+}
+body.mdc-theme-light .mdc-content code,
+body.mdc-theme-light .mdc-content pre,
+body.mdc-theme-light .mdc-content th {
+  background: rgba(220, 220, 220, 0.4);
+}
+
+body.mdc-theme-light .mdc-content pre code{
+  background: none;
+  color: #000000;
+}
+
+body.mdc-theme-light .mdc-content blockquote,
+body.mdc-theme-light .mdc-comment {
+  background: rgba(127, 127, 127, 0.1);
+}
+body.mdc-theme-light .mdc-content blockquote {
+  border-inline-start-color: rgba(0, 122, 204, 0.5);
+}
+body.mdc-theme-light .mdc-content mark {
+  color: #000000;
+  background: #fff8c5;
+}
+body.mdc-theme-light .mdc-content ::selection {
+  background: #add6ff;
+}
+body.mdc-theme-light .mdc-content kbd {
+  background: rgba(128, 128, 128, 0.17);
+}
+body.mdc-theme-light .mdc-modal {
+  background: #f3f3f3;
+  border-color: rgba(128, 128, 128, 0.35);
+}
+body.mdc-theme-light .mdc-add-affordance,
+body.mdc-theme-light .mdc-modal-save {
+  color: #ffffff;
+  background: #007acc;
+}
+body.mdc-theme-light .mdc-add-affordance:hover,
+body.mdc-theme-light .mdc-modal-save:hover {
+  background: #0062a3;
+}
+body.mdc-theme-light .mdc-action,
+body.mdc-theme-light .mdc-modal-cancel {
+  color: #ffffff;
+  background: #5f6a79;
+}
+body.mdc-theme-light .mdc-action:hover,
+body.mdc-theme-light .mdc-modal-cancel:hover {
+  background: #4c5561;
+}
+body.mdc-theme-light .mdc-add-affordance,
+body.mdc-theme-light .mdc-action,
+body.mdc-theme-light .mdc-modal-buttons button {
+  border-color: transparent;
+}
+body.mdc-theme-light .mdc-modal-textarea {
+  color: #000000;
+  background: #ffffff;
+  border-color: #cecece;
+}
+body.mdc-theme-light .mdc-action-delete.mdc-confirm {
+  color: #000000;
+  background: #ffe9e9;
+  border-color: #e51400;
+}
+body.mdc-theme-light .mdc-modal-textarea.mdc-invalid {
+  border-color: #e51400;
+}
+body.mdc-theme-light .mdc-toast {
+  color: #000000;
+  background: #ffe9e9;
+  border-color: #e51400;
+}
+body.mdc-theme-light .mdc-add-affordance:focus-visible,
+body.mdc-theme-light .mdc-action:focus-visible,
+body.mdc-theme-light .mdc-comment:focus,
+body.mdc-theme-light .mdc-modal-buttons button:focus-visible,
+body.mdc-theme-light .mdc-modal-cancel:focus-visible,
+body.mdc-theme-light .mdc-modal-save:focus-visible {
+  outline-color: #0090f1;
+}
+body.mdc-theme-light .mdc-modal-textarea:focus {
+  border-color: #0090f1;
+}
+@keyframes mdc-flash-light {
+  from { box-shadow: 0 0 0 2px #0090f1; }
+  to { box-shadow: 0 0 0 2px transparent; }
+}
+body.mdc-theme-light .mdc-comment.mdc-flash {
+  animation-name: mdc-flash-light;
+}
+
+/* VS Code "Dark+" (Default Dark+) palette — matches the classic built-in
+   Markdown preview: #d4d4d4 body text, gold inline code (#d7ba7d), a faint
+   near-black code-block fill, and the #3794ff link blue. */
+body.mdc-theme-dark {
+  color-scheme: dark;
+  background: #1e1e1e;
+  color: #d4d4d4;
+}
+body.mdc-theme-dark .mdc-content pre,
+body.mdc-theme-dark .mdc-modal,
+body.mdc-theme-dark .mdc-comment {
+  color: #d4d4d4;
+}
+body.mdc-theme-dark .mdc-comment-author {
+  color: #cccccc;
+}
+body.mdc-theme-dark .mdc-content h6,
+body.mdc-theme-dark .mdc-content blockquote,
+body.mdc-theme-dark .mdc-empty,
+body.mdc-theme-dark .mdc-modal-hint,
+body.mdc-theme-dark .mdc-comment-head {
+  color: rgba(204, 204, 204, 0.7);
+}
+body.mdc-theme-dark .mdc-content h1,
+body.mdc-theme-dark .mdc-content h2 {
+  border-bottom-color: rgba(128, 128, 128, 0.35);
+}
+body.mdc-theme-dark .mdc-content hr {
+  border-top-color: rgba(128, 128, 128, 0.35);
+}
+body.mdc-theme-dark .mdc-content pre,
+body.mdc-theme-dark .mdc-content th,
+body.mdc-theme-dark .mdc-content td,
+body.mdc-theme-dark .mdc-content kbd,
+body.mdc-theme-dark .mdc-empty,
+body.mdc-theme-dark .mdc-modal-hint kbd {
+  border-color: rgba(128, 128, 128, 0.35);
+}
+body.mdc-theme-dark .mdc-content a,
+body.mdc-theme-dark .mdc-content a:hover,
+body.mdc-theme-dark .mdc-comment-icon {
+  color: #3794ff;
+}
+body.mdc-theme-dark .mdc-comment {
+  border-inline-start-color: #3794ff;
+}
+body.mdc-theme-dark .mdc-content code {
+  color: #d7ba7d;
+}
+body.mdc-theme-dark .mdc-content pre,
+body.mdc-theme-dark .mdc-content th {
+  background: rgba(10, 10, 10, 0.4);
+}
+body.mdc-theme-dark .mdc-content pre code {
+  background: none;
+}
+
+body.mdc-theme-dark .mdc-content code {
+  background: rgba(107, 107, 107, 0.4);
+}
+
+body.mdc-theme-dark .mdc-content blockquote,
+body.mdc-theme-dark .mdc-comment {
+  background: rgba(127, 127, 127, 0.1);
+}
+body.mdc-theme-dark .mdc-content blockquote {
+  border-inline-start-color: rgba(0, 122, 204, 0.5);
+}
+body.mdc-theme-dark .mdc-content mark {
+  color: #d4d4d4;
+  background: rgba(255, 213, 0, 0.22);
+}
+body.mdc-theme-dark .mdc-content ::selection {
+  background: #264f78;
+}
+body.mdc-theme-dark .mdc-content kbd {
+  background: rgba(128, 128, 128, 0.17);
+}
+body.mdc-theme-dark .mdc-modal {
+  background: #252526;
+  border-color: rgba(128, 128, 128, 0.35);
+}
+body.mdc-theme-dark .mdc-add-affordance,
+body.mdc-theme-dark .mdc-modal-save {
+  color: #ffffff;
+  background: #0e639c;
+}
+body.mdc-theme-dark .mdc-add-affordance:hover,
+body.mdc-theme-dark .mdc-modal-save:hover {
+  background: #1177bb;
+}
+body.mdc-theme-dark .mdc-action,
+body.mdc-theme-dark .mdc-modal-cancel {
+  color: #ffffff;
+  background: #3a3d41;
+}
+body.mdc-theme-dark .mdc-action:hover,
+body.mdc-theme-dark .mdc-modal-cancel:hover {
+  background: #45494e;
+}
+body.mdc-theme-dark .mdc-add-affordance,
+body.mdc-theme-dark .mdc-action,
+body.mdc-theme-dark .mdc-modal-buttons button {
+  border-color: transparent;
+}
+body.mdc-theme-dark .mdc-modal-textarea {
+  color: #cccccc;
+  background: #3c3c3c;
+  border-color: #3c3c3c;
+}
+body.mdc-theme-dark .mdc-action-delete.mdc-confirm {
+  color: #cccccc;
+  background: #5a1d1d;
+  border-color: #be1100;
+}
+body.mdc-theme-dark .mdc-modal-textarea.mdc-invalid {
+  border-color: #be1100;
+}
+body.mdc-theme-dark .mdc-toast {
+  color: #cccccc;
+  background: #5a1d1d;
+  border-color: #be1100;
+}
+body.mdc-theme-dark .mdc-add-affordance:focus-visible,
+body.mdc-theme-dark .mdc-action:focus-visible,
+body.mdc-theme-dark .mdc-comment:focus,
+body.mdc-theme-dark .mdc-modal-buttons button:focus-visible,
+body.mdc-theme-dark .mdc-modal-cancel:focus-visible,
+body.mdc-theme-dark .mdc-modal-save:focus-visible {
+  outline-color: #007fd4;
+}
+body.mdc-theme-dark .mdc-modal-textarea:focus {
+  border-color: #007fd4;
+}
+@keyframes mdc-flash-dark {
+  from { box-shadow: 0 0 0 2px #007fd4; }
+  to { box-shadow: 0 0 0 2px transparent; }
+}
+body.mdc-theme-dark .mdc-comment.mdc-flash {
+  animation-name: mdc-flash-dark;
+}
+
+/* VS Code "Light Modern" palette. */
+body.mdc-theme-light-modern {
+  color-scheme: light;
+  background: #ffffff;
+  color: #3b3b3b;
+}
+body.mdc-theme-light-modern .mdc-content pre,
+body.mdc-theme-light-modern .mdc-modal,
+body.mdc-theme-light-modern .mdc-comment,
+body.mdc-theme-light-modern .mdc-comment-author {
+  color: #3b3b3b;
+}
+body.mdc-theme-light-modern .mdc-content h6,
+body.mdc-theme-light-modern .mdc-content blockquote,
+body.mdc-theme-light-modern .mdc-empty,
+body.mdc-theme-light-modern .mdc-modal-hint,
+body.mdc-theme-light-modern .mdc-comment-head {
+  color: #616161;
+}
+body.mdc-theme-light-modern .mdc-content h1,
+body.mdc-theme-light-modern .mdc-content h2 {
+  border-bottom-color: #d4d4d4;
+}
+body.mdc-theme-light-modern .mdc-content hr {
+  border-top-color: #d4d4d4;
+}
+body.mdc-theme-light-modern .mdc-content pre,
+body.mdc-theme-light-modern .mdc-content th,
+body.mdc-theme-light-modern .mdc-content td,
+body.mdc-theme-light-modern .mdc-content kbd,
+body.mdc-theme-light-modern .mdc-empty,
+body.mdc-theme-light-modern .mdc-modal-hint kbd {
+  border-color: #E5E5E5;
+}
+body.mdc-theme-light-modern .mdc-content a,
+body.mdc-theme-light-modern .mdc-content a:hover,
+body.mdc-theme-light-modern .mdc-comment-icon {
+  color: #005fb8;
+}
+body.mdc-theme-light-modern .mdc-comment {
+  border-inline-start-color: #005fb8;
+}
+body.mdc-theme-light-modern .mdc-content code {
+  color: #3B3B3B;
+  background: #E0E0E0;
+}
+
+body.mdc-theme-light-modern .mdc-content pre,
+body.mdc-theme-light-modern .mdc-content th {
+  background: #F8F8F8;
+}
+
+body.mdc-theme-light-modern .mdc-content pre code {
+  background: none;
+}
+
+body.mdc-theme-light-modern .mdc-content blockquote,
+body.mdc-theme-light-modern .mdc-comment {
+  background: #f3f3f3;
+}
+body.mdc-theme-light-modern .mdc-content blockquote {
+  border-inline-start-color: #d4d4d4;
+}
+body.mdc-theme-light-modern .mdc-content mark {
+  color: #3b3b3b;
+  background: #fff8c5;
+}
+body.mdc-theme-light-modern .mdc-content ::selection {
+  background: #add6ff;
+}
+body.mdc-theme-light-modern .mdc-content kbd {
+  background: rgba(128, 128, 128, 0.17);
+}
+body.mdc-theme-light-modern .mdc-modal {
+  background: #f8f8f8;
+  border-color: #d4d4d4;
+}
+body.mdc-theme-light-modern .mdc-add-affordance,
+body.mdc-theme-light-modern .mdc-modal-save {
+  color: #ffffff;
+  background: #005fb8;
+}
+body.mdc-theme-light-modern .mdc-add-affordance:hover,
+body.mdc-theme-light-modern .mdc-modal-save:hover {
+  background: #0258a8;
+}
+body.mdc-theme-light-modern .mdc-action,
+body.mdc-theme-light-modern .mdc-modal-cancel {
+  color: #3b3b3b;
+  background: #e5e5e5;
+}
+body.mdc-theme-light-modern .mdc-action:hover,
+body.mdc-theme-light-modern .mdc-modal-cancel:hover {
+  background: #cccccc;
+}
+body.mdc-theme-light-modern .mdc-add-affordance,
+body.mdc-theme-light-modern .mdc-action,
+body.mdc-theme-light-modern .mdc-modal-buttons button {
+  border-color: transparent;
+}
+body.mdc-theme-light-modern .mdc-modal-textarea {
+  color: #3b3b3b;
+  background: #ffffff;
+  border-color: #cecece;
+}
+body.mdc-theme-light-modern .mdc-action-delete.mdc-confirm {
+  color: #3b3b3b;
+  background: #ffe9e9;
+  border-color: #e51400;
+}
+body.mdc-theme-light-modern .mdc-modal-textarea.mdc-invalid {
+  border-color: #e51400;
+}
+body.mdc-theme-light-modern .mdc-toast {
+  color: #3b3b3b;
+  background: #ffe9e9;
+  border-color: #e51400;
+}
+body.mdc-theme-light-modern .mdc-add-affordance:focus-visible,
+body.mdc-theme-light-modern .mdc-action:focus-visible,
+body.mdc-theme-light-modern .mdc-comment:focus,
+body.mdc-theme-light-modern .mdc-modal-buttons button:focus-visible,
+body.mdc-theme-light-modern .mdc-modal-cancel:focus-visible,
+body.mdc-theme-light-modern .mdc-modal-save:focus-visible {
+  outline-color: #005fb8;
+}
+body.mdc-theme-light-modern .mdc-modal-textarea:focus {
+  border-color: #005fb8;
+}
+@keyframes mdc-flash-light-modern {
+  from { box-shadow: 0 0 0 2px #005fb8; }
+  to { box-shadow: 0 0 0 2px transparent; }
+}
+body.mdc-theme-light-modern .mdc-comment.mdc-flash {
+  animation-name: mdc-flash-light-modern;
+}
+
+/* VS Code "Dark Modern" palette. */
+body.mdc-theme-dark-modern .mdc-content pre {
+  background: #2e2e2e
+}
+body.mdc-theme-dark-modern {
+  color-scheme: dark;
+  --vscode-editor-background: #1f1f1f;
+  --vscode-editor-foreground: #cccccc;
+  --vscode-foreground: #cccccc;
+  --vscode-descriptionForeground: #9d9d9d;
+  --vscode-panel-border: #3c3c3c;
+  --vscode-widget-border: #3c3c3c;
+  --vscode-focusBorder: #0078d4;
+  --vscode-textLink-foreground: #4daafc;
+  --vscode-textLink-activeForeground: #4daafc;
+  --vscode-textCodeBlock-background: #3c3c3c;
+  --vscode-textPreformat-foreground: #e8e8e8;
+  --vscode-textBlockQuote-background: #2d2d2d;
+  --vscode-textBlockQuote-border: #3c3c3c;
+  --vscode-editor-findMatchHighlightBackground: rgba(255, 213, 0, 0.22);
+  --vscode-editor-selectionBackground: #264f78;
+  --mdc-mark-bg: rgba(255, 213, 0, 0.22);
+  --mdc-mark-fg: #cccccc;
+  --vscode-editorWidget-background: #202020;
+  --vscode-keybindingLabel-background: rgba(128, 128, 128, 0.17);
+  --vscode-button-background: #0078d4;
+  --vscode-button-foreground: #ffffff;
+  --vscode-button-hoverBackground: #026ec1;
+  --vscode-button-border: transparent;
+  --vscode-button-secondaryBackground: #313131;
+  --vscode-button-secondaryForeground: #cccccc;
+  --vscode-button-secondaryHoverBackground: #3c3c3c;
+  --vscode-input-background: #313131;
+  --vscode-input-foreground: #cccccc;
+  --vscode-input-border: #3c3c3c;
+  --vscode-inputValidation-errorBackground: #5a1d1d;
+  --vscode-inputValidation-errorForeground: #cccccc;
+  --vscode-inputValidation-errorBorder: #be1100;
+}
+
+/* Target-highlight ring / fill per forced theme (default "vscode" inherits the
+   --vscode-* lookups in the base .mdc-target rule). */
+body.mdc-theme-light .mdc-target {
+  --mdc-target-ring: #0090f1;
+  --mdc-target-bg: rgba(0, 144, 241, 0.12);
+}
+body.mdc-theme-dark .mdc-target {
+  --mdc-target-ring: #007fd4;
+  --mdc-target-bg: rgba(0, 127, 212, 0.16);
+}
+body.mdc-theme-light-modern .mdc-target {
+  --mdc-target-ring: #005fb8;
+  --mdc-target-bg: rgba(0, 95, 184, 0.1);
+}
+body.mdc-theme-dark-modern .mdc-target {
+  --mdc-target-ring: #0078d4;
+  --mdc-target-bg: rgba(0, 120, 212, 0.16);
+}
+
+/* ===========================================================================
+   Comment popup (add / edit) — ALWAYS the live VS Code workbench theme.
+
+   The forced color themes above repaint the whole viewer, but the add/edit
+   popup must always follow the user's CURRENT VS Code theme. We can't simply
+   read --vscode-* inside the popup, because the "dark-modern" theme redefines
+   those variables on <body> — the popup's ancestor — so they'd resolve to the
+   forced palette. Instead we first snap the live workbench values into
+   --mdc-pop-* aliases at :root (above <body>, where no forced theme reaches the
+   --vscode-* tokens), then repaint the popup from those aliases whenever a
+   forced theme is active. The default ("vscode") theme adds no <body> class, so
+   the [class*="mdc-theme-"] rules below don't match and the base popup rules
+   keep using the live --vscode-* directly. Scope is the popup ONLY: the
+   affordance, toast, comment bubbles and content stay on the forced theme.
+   =========================================================================== */
+:root {
+  --mdc-pop-bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  --mdc-pop-fg: var(--vscode-editor-foreground);
+  --mdc-pop-border: var(--vscode-widget-border, var(--vscode-panel-border, rgba(127, 127, 127, 0.35)));
+  --mdc-pop-input-fg: var(--vscode-input-foreground);
+  --mdc-pop-input-bg: var(--vscode-input-background);
+  --mdc-pop-input-border: var(--vscode-input-border, var(--vscode-panel-border, rgba(127, 127, 127, 0.4)));
+  --mdc-pop-focus: var(--vscode-focusBorder);
+  --mdc-pop-error: var(--vscode-inputValidation-errorBorder, #be1100);
+  --mdc-pop-hint-fg: var(--vscode-descriptionForeground);
+  --mdc-pop-kbd-border: var(--vscode-panel-border, rgba(127, 127, 127, 0.4));
+  --mdc-pop-btn-border: var(--vscode-button-border, transparent);
+  --mdc-pop-cancel-fg: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  --mdc-pop-cancel-bg: var(--vscode-button-secondaryBackground, rgba(127, 127, 127, 0.2));
+  --mdc-pop-cancel-hover-bg: var(--vscode-button-secondaryHoverBackground, rgba(127, 127, 127, 0.3));
+  --mdc-pop-save-fg: var(--vscode-button-foreground, #fff);
+  --mdc-pop-save-bg: var(--vscode-button-background, #0e639c);
+  --mdc-pop-save-hover-bg: var(--vscode-button-hoverBackground, #1177bb);
+}
+
+/* [class*="mdc-theme-"] matches any forced theme and carries the same
+   specificity as the forced rules above; coming last, these win. */
+body[class*="mdc-theme-"] .mdc-modal {
+  background: var(--mdc-pop-bg);
+  color: var(--mdc-pop-fg);
+  border-top-color: var(--mdc-pop-border);
+}
+body[class*="mdc-theme-"] .mdc-modal-textarea {
+  color: var(--mdc-pop-input-fg);
+  background: var(--mdc-pop-input-bg);
+  border-color: var(--mdc-pop-input-border);
+}
+body[class*="mdc-theme-"] .mdc-modal-textarea:focus {
+  border-color: var(--mdc-pop-focus);
+}
+body[class*="mdc-theme-"] .mdc-modal-textarea.mdc-invalid {
+  border-color: var(--mdc-pop-error);
+}
+body[class*="mdc-theme-"] .mdc-modal-hint {
+  color: var(--mdc-pop-hint-fg);
+}
+body[class*="mdc-theme-"] .mdc-modal-hint kbd {
+  border-color: var(--mdc-pop-kbd-border);
+}
+body[class*="mdc-theme-"] .mdc-modal-buttons button {
+  border-color: var(--mdc-pop-btn-border);
+}
+body[class*="mdc-theme-"] .mdc-modal-cancel {
+  color: var(--mdc-pop-cancel-fg);
+  background: var(--mdc-pop-cancel-bg);
+}
+body[class*="mdc-theme-"] .mdc-modal-cancel:hover {
+  background: var(--mdc-pop-cancel-hover-bg);
+}
+body[class*="mdc-theme-"] .mdc-modal-save {
+  color: var(--mdc-pop-save-fg);
+  background: var(--mdc-pop-save-bg);
+}
+body[class*="mdc-theme-"] .mdc-modal-save:hover {
+  background: var(--mdc-pop-save-hover-bg);
+}
+body[class*="mdc-theme-"] .mdc-modal-buttons button:focus-visible,
+body[class*="mdc-theme-"] .mdc-modal-cancel:focus-visible,
+body[class*="mdc-theme-"] .mdc-modal-save:focus-visible {
+  outline-color: var(--mdc-pop-focus);
+}
+
+/* Keep the textarea's native caret/scrollbar in step with the live workbench
+   light/dark (VS Code tags the webview <body> with vscode-light / vscode-dark /
+   vscode-high-contrast*), overriding the forced theme's color-scheme. */
+body.vscode-light[class*="mdc-theme-"] .mdc-modal,
+body.vscode-high-contrast-light[class*="mdc-theme-"] .mdc-modal {
+  color-scheme: light;
+}
+body.vscode-dark[class*="mdc-theme-"] .mdc-modal,
+body.vscode-high-contrast[class*="mdc-theme-"] .mdc-modal {
+  color-scheme: dark;
+}
+
+/* ===========================================================================
+   "Address comments" AI bar under the forced color themes. The default
+   ("vscode") and "dark-modern" themes inherit the --vscode-* lookups in the
+   base .mdc-ai-* rules; the three static-palette themes repaint it here.
+   =========================================================================== */
+body.mdc-theme-light .mdc-ai-bar,
+body.mdc-theme-light-modern .mdc-ai-bar {
+  background: #f8f8f8;
+  border-color: rgba(128, 128, 128, 0.35);
+}
+body.mdc-theme-dark .mdc-ai-bar {
+  background: #252526;
+  border-color: rgba(128, 128, 128, 0.35);
+}
+body.mdc-theme-light .mdc-ai-agent,
+body.mdc-theme-light-modern .mdc-ai-agent {
+  color: #616161;
+}
+body.mdc-theme-dark .mdc-ai-agent {
+  color: rgba(204, 204, 204, 0.7);
+}
+body.mdc-theme-light .mdc-ai-select,
+body.mdc-theme-light-modern .mdc-ai-select {
+  color: #3b3b3b;
+  background: #ffffff;
+  border-color: #cecece;
+}
+body.mdc-theme-dark .mdc-ai-select {
+  color: #cccccc;
+  background: #3c3c3c;
+  border-color: #3c3c3c;
+}
+body.mdc-theme-light .mdc-ai-run {
+  color: #ffffff;
+  background: #007acc;
+}
+body.mdc-theme-light .mdc-ai-run:hover {
+  background: #0062a3;
+}
+body.mdc-theme-light-modern .mdc-ai-run {
+  color: #ffffff;
+  background: #005fb8;
+}
+body.mdc-theme-light-modern .mdc-ai-run:hover {
+  background: #0258a8;
+}
+body.mdc-theme-dark .mdc-ai-run {
+  color: #ffffff;
+  background: #0e639c;
+}
+body.mdc-theme-dark .mdc-ai-run:hover {
+  background: #1177bb;
+}
+body.mdc-theme-light .mdc-ai-run:focus-visible,
+body.mdc-theme-light-modern .mdc-ai-run:focus-visible,
+body.mdc-theme-light .mdc-ai-select:focus-visible,
+body.mdc-theme-light-modern .mdc-ai-select:focus-visible {
+  outline-color: #0090f1;
+}
+body.mdc-theme-dark .mdc-ai-run:focus-visible,
+body.mdc-theme-dark .mdc-ai-select:focus-visible {
+  outline-color: #007fd4;
+}
+/* Secondary buttons (Review / Revert) per forced theme. */
+body.mdc-theme-light .mdc-ai-btn {
+  color: #ffffff;
+  background: #5f6a79;
+}
+body.mdc-theme-light .mdc-ai-btn:hover {
+  background: #4c5561;
+}
+body.mdc-theme-dark .mdc-ai-btn {
+  color: #ffffff;
+  background: #3a3d41;
+}
+body.mdc-theme-dark .mdc-ai-btn:hover {
+  background: #45494e;
+}
+body.mdc-theme-light-modern .mdc-ai-btn {
+  color: #3b3b3b;
+  background: #e5e5e5;
+}
+body.mdc-theme-light-modern .mdc-ai-btn:hover {
+  background: #cccccc;
+}
+/* Stop (danger) per forced theme. */
+body.mdc-theme-light .mdc-ai-stop,
+body.mdc-theme-light-modern .mdc-ai-stop {
+  color: #ffffff;
+  background: #e51400;
+  border-color: #e51400;
+}
+body.mdc-theme-dark .mdc-ai-stop {
+  color: #ffffff;
+  background: #be1100;
+  border-color: #be1100;
+}
+body.mdc-theme-light .mdc-ai-btn:focus-visible,
+body.mdc-theme-light-modern .mdc-ai-btn:focus-visible,
+body.mdc-theme-light .mdc-ai-stop:focus-visible,
+body.mdc-theme-light-modern .mdc-ai-stop:focus-visible {
+  outline-color: #0090f1;
+}
+body.mdc-theme-dark .mdc-ai-btn:focus-visible,
+body.mdc-theme-dark .mdc-ai-stop:focus-visible {
+  outline-color: #007fd4;
+}
+body.mdc-theme-light .mdc-ai-status.mdc-ai-error,
+body.mdc-theme-light-modern .mdc-ai-status.mdc-ai-error {
+  color: #e51400;
+}
+body.mdc-theme-dark .mdc-ai-status.mdc-ai-error {
+  color: #f14c4c;
+}
+body.mdc-theme-light .mdc-ai-status.mdc-ai-review,
+body.mdc-theme-light-modern .mdc-ai-status.mdc-ai-review {
+  color: #3b3b3b;
+}
+body.mdc-theme-dark .mdc-ai-status.mdc-ai-review {
+  color: #cccccc;
+}
+
+/* ===========================================================================
+   Toolbar / find bar + search highlights under the forced color themes. The
+   default ("vscode") and "dark-modern" themes inherit the --vscode-* lookups
+   in the base rules; the three static-palette themes repaint them here.
+   =========================================================================== */
+body.mdc-theme-light .mdc-toolbar,
+body.mdc-theme-light-modern .mdc-toolbar {
+  background: #ffffff;
+  border-bottom-color: rgba(128, 128, 128, 0.35);
+}
+body.mdc-theme-dark .mdc-toolbar {
+  background: #1e1e1e;
+  border-bottom-color: rgba(128, 128, 128, 0.35);
+}
+body.mdc-theme-light .mdc-search-input,
+body.mdc-theme-light-modern .mdc-search-input {
+  color: #3b3b3b;
+  background: #ffffff;
+  border-color: #cecece;
+}
+body.mdc-theme-dark .mdc-search-input {
+  color: #cccccc;
+  background: #3c3c3c;
+  border-color: #3c3c3c;
+}
+body.mdc-theme-light .mdc-search-count,
+body.mdc-theme-light-modern .mdc-search-count {
+  color: #616161;
+}
+body.mdc-theme-dark .mdc-search-count {
+  color: rgba(204, 204, 204, 0.7);
+}
+body.mdc-theme-light .mdc-search-btn,
+body.mdc-theme-light-modern .mdc-search-btn {
+  color: #3b3b3b;
+  background: #e5e5e5;
+}
+body.mdc-theme-light .mdc-search-btn:hover,
+body.mdc-theme-light-modern .mdc-search-btn:hover {
+  background: #cccccc;
+}
+body.mdc-theme-dark .mdc-search-btn {
+  color: #cccccc;
+  background: #3a3d41;
+}
+body.mdc-theme-dark .mdc-search-btn:hover {
+  background: #45494e;
+}
+body.mdc-theme-light .mdc-search-input:focus,
+body.mdc-theme-light-modern .mdc-search-input:focus,
+body.mdc-theme-light .mdc-search-btn:focus-visible,
+body.mdc-theme-light-modern .mdc-search-btn:focus-visible {
+  outline-color: #0090f1;
+  border-color: #0090f1;
+}
+body.mdc-theme-dark .mdc-search-input:focus,
+body.mdc-theme-dark .mdc-search-btn:focus-visible {
+  outline-color: #007fd4;
+  border-color: #007fd4;
+}
+/* Scoped with .mdc-content so these out-rank the forced themes'
+   `.mdc-content mark` rules (equal specificity, but these come last). */
+body.mdc-theme-light .mdc-content mark.mdc-search-hit,
+body.mdc-theme-light-modern .mdc-content mark.mdc-search-hit {
+  color: #000000;
+  background: #ffd700;
+}
+body.mdc-theme-light .mdc-content mark.mdc-search-hit-current,
+body.mdc-theme-light-modern .mdc-content mark.mdc-search-hit-current {
+  color: #000000;
+  background: #ff9632;
+  outline: 1px solid #0090f1;
+}
+body.mdc-theme-dark .mdc-content mark.mdc-search-hit {
+  color: #d4d4d4;
+  background: rgba(234, 92, 0, 0.33);
+}
+body.mdc-theme-dark .mdc-content mark.mdc-search-hit-current {
+  color: #ffffff;
+  background: rgba(234, 92, 0, 0.66);
+  outline: 1px solid #007fd4;
+}

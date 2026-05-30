@@ -1,0 +1,186 @@
+--- /tmp/orig_viewer.css	2026-05-30 15:49:12
++++ media/viewer.css	2026-05-30 15:50:53
+@@ -17,6 +17,95 @@
+   position: relative;
+   max-width: var(--mdc-content-max-width, 1100px);
+   margin: 0 auto;
++}
++
++/* ---- toolbar + in-view find bar -----------------------------------------
++   A slim bar pinned to the top of the view holding the search controls. The
++   search box mirrors the popup / AI-bar chrome (input + secondary buttons),
++   themed via --vscode-* so it matches the workbench by default. */
++.mdc-toolbar {
++  position: sticky;
++  top: 0;
++  z-index: 50;
++  display: flex;
++  justify-content: flex-end;
++  margin: -1.6rem -1.6rem 1rem;
++  padding: 0.5rem 1.6rem;
++  background: var(--vscode-editor-background, var(--vscode-editorWidget-background));
++  border-bottom: 1px solid var(--vscode-panel-border, rgba(127, 127, 127, 0.25));
++}
++
++.mdc-search {
++  display: flex;
++  align-items: center;
++  gap: 0.3em;
++}
++
++.mdc-search-input {
++  font: inherit;
++  font-size: 0.85em;
++  width: 16em;
++  max-width: 40vw;
++  padding: 0.3em 0.5em;
++  color: var(--vscode-input-foreground);
++  background: var(--vscode-input-background);
++  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border, rgba(127, 127, 127, 0.4)));
++  border-radius: 4px;
++}
++
++.mdc-search-input:focus {
++  outline: none;
++  border-color: var(--vscode-focusBorder);
++}
++
++.mdc-search-count {
++  min-width: 3.2em;
++  font-size: 0.78em;
++  text-align: center;
++  white-space: nowrap;
++  color: var(--vscode-descriptionForeground);
++}
++
++.mdc-search-btn {
++  font: inherit;
++  font-size: 0.82em;
++  line-height: 1;
++  padding: 0.3em 0.5em;
++  cursor: pointer;
++  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
++  background: var(--vscode-button-secondaryBackground, rgba(127, 127, 127, 0.2));
++  border: 1px solid var(--vscode-button-border, transparent);
++  border-radius: 4px;
++}
++
++.mdc-search-btn:hover {
++  background: var(--vscode-button-secondaryHoverBackground, rgba(127, 127, 127, 0.3));
++}
++
++.mdc-search-btn:focus-visible {
++  outline: 1px solid var(--vscode-focusBorder);
++  outline-offset: 1px;
++}
++
++.mdc-search-clear {
++  font-size: 1em;
++}
++
++/* ---- search match highlights --------------------------------------------
++   .mdc-search-hit is the subtle highlight for every match; the current match
++   gets the stronger find-match fill plus an outline so it stands out as you
++   step through results. Text color is pinned so matches stay readable. */
++mark.mdc-search-hit {
++  padding: 0;
++  border-radius: 2px;
++  color: var(--vscode-editor-foreground, var(--vscode-foreground));
++  background: var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.33));
++}
++
++mark.mdc-search-hit-current {
++  color: var(--vscode-editor-foreground, var(--vscode-foreground));
++  background: var(--vscode-editor-findMatchBackground, rgba(234, 92, 0, 0.6));
++  outline: 1px solid var(--vscode-editor-findMatchBorder, var(--vscode-focusBorder, #3794ff));
+ }
+ 
+ /* ===========================================================================
+@@ -1253,4 +1342,87 @@
+ }
+ body.mdc-theme-dark .mdc-ai-status.mdc-ai-error {
+   color: #f14c4c;
++}
++
++/* ===========================================================================
++   Toolbar / find bar + search highlights under the forced color themes. The
++   default ("vscode") and "dark-modern" themes inherit the --vscode-* lookups
++   in the base rules; the three static-palette themes repaint them here.
++   =========================================================================== */
++body.mdc-theme-light .mdc-toolbar,
++body.mdc-theme-light-modern .mdc-toolbar {
++  background: #ffffff;
++  border-bottom-color: rgba(128, 128, 128, 0.35);
++}
++body.mdc-theme-dark .mdc-toolbar {
++  background: #1e1e1e;
++  border-bottom-color: rgba(128, 128, 128, 0.35);
++}
++body.mdc-theme-light .mdc-search-input,
++body.mdc-theme-light-modern .mdc-search-input {
++  color: #3b3b3b;
++  background: #ffffff;
++  border-color: #cecece;
+ }
++body.mdc-theme-dark .mdc-search-input {
++  color: #cccccc;
++  background: #3c3c3c;
++  border-color: #3c3c3c;
++}
++body.mdc-theme-light .mdc-search-count,
++body.mdc-theme-light-modern .mdc-search-count {
++  color: #616161;
++}
++body.mdc-theme-dark .mdc-search-count {
++  color: rgba(204, 204, 204, 0.7);
++}
++body.mdc-theme-light .mdc-search-btn,
++body.mdc-theme-light-modern .mdc-search-btn {
++  color: #3b3b3b;
++  background: #e5e5e5;
++}
++body.mdc-theme-light .mdc-search-btn:hover,
++body.mdc-theme-light-modern .mdc-search-btn:hover {
++  background: #cccccc;
++}
++body.mdc-theme-dark .mdc-search-btn {
++  color: #cccccc;
++  background: #3a3d41;
++}
++body.mdc-theme-dark .mdc-search-btn:hover {
++  background: #45494e;
++}
++body.mdc-theme-light .mdc-search-input:focus,
++body.mdc-theme-light-modern .mdc-search-input:focus,
++body.mdc-theme-light .mdc-search-btn:focus-visible,
++body.mdc-theme-light-modern .mdc-search-btn:focus-visible {
++  outline-color: #0090f1;
++  border-color: #0090f1;
++}
++body.mdc-theme-dark .mdc-search-input:focus,
++body.mdc-theme-dark .mdc-search-btn:focus-visible {
++  outline-color: #007fd4;
++  border-color: #007fd4;
++}
++/* Scoped with .mdc-content so these out-rank the forced themes'
++   `.mdc-content mark` rules (equal specificity, but these come last). */
++body.mdc-theme-light .mdc-content mark.mdc-search-hit,
++body.mdc-theme-light-modern .mdc-content mark.mdc-search-hit {
++  color: #000000;
++  background: #ffd700;
++}
++body.mdc-theme-light .mdc-content mark.mdc-search-hit-current,
++body.mdc-theme-light-modern .mdc-content mark.mdc-search-hit-current {
++  color: #000000;
++  background: #ff9632;
++  outline: 1px solid #0090f1;
++}
++body.mdc-theme-dark .mdc-content mark.mdc-search-hit {
++  color: #d4d4d4;
++  background: rgba(234, 92, 0, 0.33);
++}
++body.mdc-theme-dark .mdc-content mark.mdc-search-hit-current {
++  color: #ffffff;
++  background: rgba(234, 92, 0, 0.66);
++  outline: 1px solid #007fd4;
++}

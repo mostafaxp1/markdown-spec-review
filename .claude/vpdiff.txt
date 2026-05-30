@@ -1,0 +1,100 @@
+18c18
+< import { spawn } from 'child_process';
+---
+> import { spawn, ChildProcess } from 'child_process';
+107a108,134
+> // --- "review changes" diff support -----------------------------------------
+> // The agent edits the file in place, so to let the user review/approve we keep
+> // a pre-run snapshot and expose it through a read-only virtual document the
+> // VS Code diff editor can show on the left, against the live (revised) file on
+> // the right. Snapshots are keyed by an opaque token carried in the URI's query.
+> const MDC_ORIGINAL_SCHEME = 'mdc-comments-original';
+> const originalSnapshots = new Map<string, string>();
+> let originalProviderRegistered = false;
+> 
+> function ensureOriginalProvider(context: vscode.ExtensionContext): void {
+>   if (originalProviderRegistered) {
+>     return;
+>   }
+>   originalProviderRegistered = true;
+>   context.subscriptions.push(
+>     vscode.workspace.registerTextDocumentContentProvider(MDC_ORIGINAL_SCHEME, {
+>       provideTextDocumentContent(uri) {
+>         return originalSnapshots.get(uri.query) ?? '';
+>       },
+>     })
+>   );
+> }
+> 
+> function originalDiffUri(token: string, name: string): vscode.Uri {
+>   return vscode.Uri.from({ scheme: MDC_ORIGINAL_SCHEME, path: `/${name}`, query: token });
+> }
+> 
+233,234c260,269
+<   /** Guards against launching a second headless agent run over the first. */
+<   private aiRunning = false;
+---
+>   /** The run currently in flight (target + label), or undefined when idle. */
+>   private aiActiveRun: { docPath: string; label: string } | undefined;
+>   /** The spawned headless agent process while running (for Stop). */
+>   private aiChild: ChildProcess | undefined;
+>   /** The integrated terminal a terminal-mode run is using (for Stop / finish). */
+>   private aiTerminal: vscode.Terminal | undefined;
+>   /** Set when the user asks to stop, so the exit path reports a stop, not a fail. */
+>   private aiStopRequested = false;
+>   /** Pre-run snapshot of the document, enabling review / approve / revert. */
+>   private aiSnapshot: { original: string; token: string } | undefined;
+282a318,329
+>         }
+>       },
+>       null,
+>       this.disposables
+>     );
+> 
+>     // A terminal-mode run finishes when the user closes (or we Stop) its
+>     // terminal — that's our cue to offer the review/approve step.
+>     vscode.window.onDidCloseTerminal(
+>       (term) => {
+>         if (term === this.aiTerminal) {
+>           void this.finishRun({});
+291a339,349
+>     // A headless agent is tied to this view — don't leave it editing the file
+>     // after the view is gone. A terminal-mode run is the user's to manage.
+>     if (this.aiChild) {
+>       try {
+>         this.aiChild.kill('SIGTERM');
+>       } catch {
+>         /* already gone */
+>       }
+>       this.aiChild = undefined;
+>     }
+>     this.clearSnapshot();
+394a453
+>         this.restoreAiPhase();
+397a457,468
+>         break;
+>       case 'stopAddress':
+>         this.handleStop();
+>         break;
+>       case 'reviewChanges':
+>         await this.handleReview();
+>         break;
+>       case 'approveChanges':
+>         this.handleApprove();
+>         break;
+>       case 'rejectChanges':
+>         await this.handleReject();
+884a956,968
+>   <div class="mdc-toolbar">
+>     <div class="mdc-search" role="search">
+>       <input id="mdc-search-input" class="mdc-search-input" type="text"
+>         placeholder="Search comments…" aria-label="Search comments" />
+>       <span id="mdc-search-count" class="mdc-search-count" aria-live="polite"></span>
+>       <button type="button" id="mdc-search-prev" class="mdc-search-btn"
+>         title="Previous match (Shift+Enter)" aria-label="Previous match">▲</button>
+>       <button type="button" id="mdc-search-next" class="mdc-search-btn"
+>         title="Next match (Enter)" aria-label="Next match">▼</button>
+>       <button type="button" id="mdc-search-clear" class="mdc-search-btn mdc-search-clear"
+>         title="Clear search" aria-label="Clear search">×</button>
+>     </div>
+>   </div>
