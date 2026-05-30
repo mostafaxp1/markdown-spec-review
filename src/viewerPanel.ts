@@ -956,7 +956,7 @@ export class CommentViewerPanel {
 
     let child: ChildProcess;
     try {
-      child = spawn(inv.bin, inv.args, { cwd: p.cwd, windowsHide: true });
+      child = spawn(inv.bin, inv.args, { cwd: p.cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     } catch (err: any) {
       this.failRun(err?.message || 'Failed to start the agent.');
       return;

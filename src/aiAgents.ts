@@ -334,7 +334,7 @@ export interface InvocationInput {
  * session interactive (still seeded with the prompt) so the user can watch.
  */
 export function buildInvocation(input: InvocationInput): Invocation {
-  const { agent, runMode, model, effort, prompt } = input;
+  const { agent, runMode, model, prompt } = input;
   const bin = resolveBin(agent);
   const headless = runMode === 'headless';
 
@@ -357,16 +357,12 @@ export function buildInvocation(input: InvocationInput): Invocation {
     case 'codex': {
       const args: string[] = [];
       if (headless) {
-        args.push('exec');
+        // `exec` is Codex's non-interactive subcommand; workspace-write lets it
+        // edit files without per-command approval prompts.
+        args.push('exec', '--sandbox', 'workspace-write');
       }
       if (model) {
         args.push('--model', model);
-      }
-      // Native reasoning-effort knob (no shell quoting here — argv is passed
-      // directly for headless, and the terminal quoter wraps it as needed).
-      args.push('-c', `model_reasoning_effort=${effort}`);
-      if (headless) {
-        args.push('--full-auto');
       }
       args.push(prompt);
       return { bin, args };
