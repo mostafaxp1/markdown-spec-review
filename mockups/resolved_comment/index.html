@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Resolved Comment UI — design harness</title>
+<style>
+  /* =========================================================================
+     DESIGN HARNESS for the "Markdown Comments" Interactive Comments View.
+     Self-contained: no network requests, inline CSS + inline SVG only.
+
+     The CSS below mirrors the real extension stylesheets so the resolved
+     refinement ports cleanly:
+       - base bubble look from media/preview.css
+       - interactive chrome + resolved section from media/viewer.css
+     Theme is driven by --vscode-* custom properties set on a
+     [data-theme="light"|"dark"] wrapper, exactly like the var(--vscode-*,
+     fallback) pattern production uses.
+     ========================================================================= */
+
+  /* ---- harness chrome (NOT part of production) -------------------------- */
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; }
+
+  .harness-bar {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 1rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-size: 13px;
+    color: #cccccc;
+    background: #181818;
+    border-bottom: 1px solid #2b2b2b;
+  }
+  .harness-bar strong { font-weight: 600; color: #fff; }
+  .harness-bar .harness-note { color: #8a8a8a; font-weight: 400; }
+  .harness-toggle {
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.35em 0.9em;
+    border-radius: 999px;
+    color: #fff;
+    background: #2f6fb0;
+    border: 1px solid transparent;
+  }
+  .harness-toggle:hover { background: #3a82c9; }
+  .harness-toggle:focus-visible { outline: 2px solid #4daafc; outline-offset: 2px; }
+
+  /* The theme wrapper supplies the --vscode-* tokens the bubble CSS reads,
+     using realistic VS Code values for the two default themes. */
+  .vscode-surface {
+    min-height: calc(100vh - 52px);
+    background: var(--vscode-editor-background);
+    color: var(--vscode-editor-foreground);
+    transition: background 0.18s ease, color 0.18s ease;
+  }
+
+  /* ---- Dark+ tokens ----------------------------------------------------- */
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --vscode-editor-background: #1e1e1e;
+    --vscode-editor-foreground: #cccccc;
+    --vscode-foreground: #cccccc;
+    --vscode-descriptionForeground: #9d9d9d;
+    --vscode-textLink-foreground: #3794ff;
+    --vscode-textLink-activeForeground: #4daafc;
+    --vscode-charts-green: #89d185;
+    --vscode-textBlockQuote-background: rgba(255, 255, 255, 0.06);
+    --vscode-panel-border: rgba(127, 127, 127, 0.25);
+    --vscode-focusBorder: #007fd4;
+    --vscode-button-secondaryForeground: #cccccc;
+    --vscode-button-secondaryBackground: #3a3d41;
+    --vscode-button-secondaryHoverBackground: #45494e;
+    --vscode-button-border: transparent;
+  }
+
+  /* ---- Light+ tokens ---------------------------------------------------- */
+  [data-theme="light"] {
+    color-scheme: light;
+    --vscode-editor-background: #ffffff;
+    --vscode-editor-foreground: #3b3b3b;
+    --vscode-foreground: #3b3b3b;
+    --vscode-descriptionForeground: #717171;
+    --vscode-textLink-foreground: #006ab1;
+    --vscode-textLink-activeForeground: #006ab1;
+    --vscode-charts-green: #388a34;
+    --vscode-textBlockQuote-background: rgba(0, 0, 0, 0.05);
+    --vscode-panel-border: rgba(128, 128, 128, 0.3);
+    --vscode-focusBorder: #0090f1;
+    --vscode-button-secondaryForeground: #3b3b3b;
+    --vscode-button-secondaryBackground: #e5e5e5;
+    --vscode-button-secondaryHoverBackground: #cccccc;
+    --vscode-button-border: transparent;
+  }
+
+  /* =========================================================================
+     PRODUCTION CSS — body / content frame (from viewer.css)
+     ========================================================================= */
+  .vscode-surface {
+    padding: 1.6rem 1.6rem 4rem;
+    font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif);
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .mdc-content {
+    position: relative;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  .mdc-content > *:first-child { margin-top: 0; }
+
+  .mdc-content h1 {
+    margin: 0 0 0.6em;
+    font-size: 1.9em;
+    line-height: 1.3;
+    font-weight: 600;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--vscode-panel-border, rgba(127, 127, 127, 0.25));
+  }
+  .mdc-content h2 {
+    margin: 1.6em 0 0.6em;
+    font-size: 1.5em;
+    line-height: 1.3;
+    font-weight: 600;
+    padding-bottom: 0.25em;
+    border-bottom: 1px solid var(--vscode-panel-border, rgba(127, 127, 127, 0.2));
+  }
+  .mdc-content p { margin: 0.7em 0; }
+  .mdc-content code {
+    font-family: "SF Mono", Menlo, Consolas, "Courier New", monospace;
+    font-size: 0.94em;
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    background: rgba(127, 127, 127, 0.16);
+  }
+
+  /* =========================================================================
+     PRODUCTION CSS — base bubble (from preview.css)
+     ========================================================================= */
+  .mdc-comment {
+    display: block;
+    margin: 0.6em 0 1em;
+    padding: 0.55em 0.8em;
+    border-radius: 6px;
+    border-inline-start: 3px solid var(--vscode-textLink-foreground, #3794ff);
+    background: var(--vscode-textBlockQuote-background, rgba(127, 127, 127, 0.1));
+    color: var(--vscode-editor-foreground);
+    font-size: 0.92em;
+    line-height: 1.5;
+  }
+
+  .mdc-comment-head {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    cursor: pointer;
+    user-select: none;
+    color: var(--vscode-descriptionForeground);
+  }
+
+  .mdc-comment-icon {
+    flex: 0 0 auto;
+    color: var(--vscode-textLink-foreground, #3794ff);
+  }
+
+  .mdc-comment-meta {
+    display: inline-flex;
+    gap: 0.4em;
+    font-size: 0.85em;
+  }
+
+  .mdc-comment-author {
+    font-weight: 600;
+    color: var(--vscode-foreground);
+  }
+
+  .mdc-comment-date { opacity: 0.8; }
+
+  .mdc-comment-body {
+    margin-top: 0.4em;
+    white-space: normal;
+  }
+
+  .mdc-comment:focus {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: 1px;
+  }
+
+  /* ---- interactive: inline edit/delete (from viewer.css) ---------------- */
+  .mdc-comment-actions {
+    margin-inline-start: auto;
+    display: inline-flex;
+    gap: 0.3em;
+    opacity: 0;
+    transition: opacity 0.1s ease-in-out;
+  }
+  .mdc-comment:hover .mdc-comment-actions,
+  .mdc-comment:focus-within .mdc-comment-actions { opacity: 1; }
+
+  .mdc-action {
+    font: inherit;
+    font-size: 0.82em;
+    padding: 0.05em 0.5em;
+    cursor: pointer;
+    color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+    background: var(--vscode-button-secondaryBackground, rgba(127, 127, 127, 0.2));
+    border: 1px solid var(--vscode-button-border, transparent);
+    border-radius: 4px;
+  }
+  .mdc-action:hover {
+    background: var(--vscode-button-secondaryHoverBackground, rgba(127, 127, 127, 0.3));
+  }
+  .mdc-action:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: 1px;
+  }
+
+  /* =========================================================================
+     RESOLVED COMMENTS — the refinement under evaluation ("Quietly done").
+
+     Subtle, VS Code-native moves only:
+       1. Clean SOLID green left accent at the SAME 3px width as open bubbles
+          (consistent rhythm), using a fixed medium green (#2ea043) that reads
+          on both light and dark — not the theme's washed-out charts-green.
+       2. A faint, even green wash layered over the normal blockquote fill so
+          the whole bubble quietly reads "handled" without competing with open
+          comments. Body text is untouched (no dimming).
+       3. A refined "✓ Resolved" status chip: inline-flex, vertically centered
+          with the author/date meta, hairline green border for a crisp edge,
+          comfortable padding, slight positive letter-spacing. The check gets
+          its own span so it can be sized/spaced precisely against the label.
+
+     Scoped under .mdc-content (specificity 0,3,0) so it out-specifies the
+     forced-theme rules `body.mdc-theme-* .mdc-comment` (0,2,1) in production.
+     ========================================================================= */
+  .mdc-content .mdc-comment.mdc-resolved {
+    border-inline-start-color: #2ea043;
+    background:
+      linear-gradient(0deg, rgba(46, 160, 67, 0.10), rgba(46, 160, 67, 0.10)),
+      var(--vscode-textBlockQuote-background, rgba(127, 127, 127, 0.1));
+  }
+
+  .mdc-content .mdc-comment.mdc-resolved .mdc-resolved-badge {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32em;
+    margin-inline-start: 0.2em;
+    padding: 0.12em 0.55em;
+    border-radius: 999px;
+    font-size: 0.72em;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    color: #2ea043;
+    background: rgba(46, 160, 67, 0.12);
+    border: 1px solid rgba(46, 160, 67, 0.40);
+  }
+
+  /* The check glyph in its own span: sized a touch larger than the label and
+     given a hair of optical alignment so the tick sits crisp against the text. */
+  .mdc-content .mdc-comment.mdc-resolved .mdc-resolved-check {
+    font-size: 1.05em;
+    line-height: 1;
+    display: inline-block;
+    transform: translateY(0.02em);
+  }
+</style>
+</head>
+<body data-theme="dark">
+  <div class="harness-bar">
+    <span>
+      <strong>Resolved Comment UI</strong>
+      <span class="harness-note">— Interactive Comments View · "Quietly done" refinement</span>
+    </span>
+    <button type="button" class="harness-toggle" id="themeToggle" aria-pressed="false">
+      Switch to light theme
+    </button>
+  </div>
+
+  <!-- The theme wrapper carries the data-theme that supplies --vscode-* tokens. -->
+  <div class="vscode-surface" id="surface" data-theme="dark">
+    <div class="mdc-content" id="mdc-content">
+      <h1>Onboarding Guide</h1>
+
+      <p>
+        This document walks a new contributor through cloning the repo, installing
+        dependencies, and running the test suite locally before opening a pull request.
+      </p>
+
+      <!-- OPEN comment -->
+      <aside class="mdc-comment mdc-interactive" tabindex="0"
+             data-comment-index="0"
+             data-comment-author="Priya N." data-comment-date="2026-05-28">
+        <div class="mdc-comment-head">
+          <svg class="mdc-comment-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path fill="currentColor" d="M1 2.75A1.75 1.75 0 0 1 2.75 1h10.5A1.75 1.75 0 0 1 15 2.75v7.5A1.75 1.75 0 0 1 13.25 12H7.06l-3.22 3.22A.75.75 0 0 1 2.5 14.69V12h-.25A1.75 1.75 0 0 1 1 10.25v-7.5Z"/>
+          </svg>
+          <div class="mdc-comment-meta">
+            <span class="mdc-comment-author">Priya N.</span> · <span class="mdc-comment-date">2026-05-28</span>
+          </div>
+          <div class="mdc-comment-actions">
+            <button type="button" class="mdc-action mdc-action-edit" aria-label="Edit comment" title="Edit comment">Edit</button>
+            <button type="button" class="mdc-action mdc-action-delete" aria-label="Delete comment" title="Delete comment">Delete</button>
+          </div>
+        </div>
+        <div class="mdc-comment-body">
+          Can we mention the minimum Node version here? New folks keep hitting
+          the <code>engines</code> mismatch on first install.
+        </div>
+      </aside>
+
+      <p>
+        Clone the repository and run the bootstrap script. It installs the workspace
+        packages and sets up the git hooks used for linting on commit.
+      </p>
+
+      <!-- RESOLVED comment (with a literal "Resolved:" line, like real data) -->
+      <aside class="mdc-comment mdc-interactive mdc-resolved" tabindex="0"
+             data-comment-index="1"
+             data-comment-author="Priya N." data-comment-date="2026-05-29"
+             data-comment-resolved="1">
+        <div class="mdc-comment-head">
+          <svg class="mdc-comment-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path fill="currentColor" d="M1 2.75A1.75 1.75 0 0 1 2.75 1h10.5A1.75 1.75 0 0 1 15 2.75v7.5A1.75 1.75 0 0 1 13.25 12H7.06l-3.22 3.22A.75.75 0 0 1 2.5 14.69V12h-.25A1.75 1.75 0 0 1 1 10.25v-7.5Z"/>
+          </svg>
+          <div class="mdc-comment-meta">
+            <span class="mdc-comment-author">Priya N.</span> · <span class="mdc-comment-date">2026-05-29</span>
+          </div>
+          <span class="mdc-resolved-badge" title="This comment has been resolved"><span class="mdc-resolved-check" aria-hidden="true">✓</span>Resolved</span>
+          <div class="mdc-comment-actions">
+            <button type="button" class="mdc-action mdc-action-edit" aria-label="Edit comment" title="Edit comment">Edit</button>
+            <button type="button" class="mdc-action mdc-action-delete" aria-label="Delete comment" title="Delete comment">Delete</button>
+          </div>
+        </div>
+        <div class="mdc-comment-body">
+          Should the bootstrap step note that it also runs <code>git config</code>?<br>
+          Resolved: added a sentence below clarifying that hooks are installed
+          automatically by the script.
+        </div>
+      </aside>
+
+      <h2>Running the tests</h2>
+
+      <p>
+        Use <code>npm test</code> for the full suite, or <code>npm run test:watch</code>
+        while iterating. Coverage reports are written to the <code>coverage/</code> folder.
+      </p>
+
+      <!-- RESOLVED comment (badge only, body without a literal Resolved line) -->
+      <aside class="mdc-comment mdc-interactive mdc-resolved" tabindex="0"
+             data-comment-index="2"
+             data-comment-author="Marco T." data-comment-date="2026-05-29"
+             data-comment-resolved="1">
+        <div class="mdc-comment-head">
+          <svg class="mdc-comment-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path fill="currentColor" d="M1 2.75A1.75 1.75 0 0 1 2.75 1h10.5A1.75 1.75 0 0 1 15 2.75v7.5A1.75 1.75 0 0 1 13.25 12H7.06l-3.22 3.22A.75.75 0 0 1 2.5 14.69V12h-.25A1.75 1.75 0 0 1 1 10.25v-7.5Z"/>
+          </svg>
+          <div class="mdc-comment-meta">
+            <span class="mdc-comment-author">Marco T.</span> · <span class="mdc-comment-date">2026-05-29</span>
+          </div>
+          <span class="mdc-resolved-badge" title="This comment has been resolved"><span class="mdc-resolved-check" aria-hidden="true">✓</span>Resolved</span>
+          <div class="mdc-comment-actions">
+            <button type="button" class="mdc-action mdc-action-edit" aria-label="Edit comment" title="Edit comment">Edit</button>
+            <button type="button" class="mdc-action mdc-action-delete" aria-label="Delete comment" title="Delete comment">Delete</button>
+          </div>
+        </div>
+        <div class="mdc-comment-body">
+          The watch command flag is documented now — thanks for catching the typo
+          in <code>test:watch</code>.
+        </div>
+      </aside>
+
+      <p>
+        Once the suite is green, open a pull request against <code>main</code>. The CI
+        pipeline re-runs the same checks and posts the coverage delta as a comment.
+      </p>
+
+      <!-- OPEN comment -->
+      <aside class="mdc-comment mdc-interactive" tabindex="0"
+             data-comment-index="3"
+             data-comment-author="Dana W." data-comment-date="2026-05-30">
+        <div class="mdc-comment-head">
+          <svg class="mdc-comment-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path fill="currentColor" d="M1 2.75A1.75 1.75 0 0 1 2.75 1h10.5A1.75 1.75 0 0 1 15 2.75v7.5A1.75 1.75 0 0 1 13.25 12H7.06l-3.22 3.22A.75.75 0 0 1 2.5 14.69V12h-.25A1.75 1.75 0 0 1 1 10.25v-7.5Z"/>
+          </svg>
+          <div class="mdc-comment-meta">
+            <span class="mdc-comment-author">Dana W.</span> · <span class="mdc-comment-date">2026-05-30</span>
+          </div>
+          <div class="mdc-comment-actions">
+            <button type="button" class="mdc-action mdc-action-edit" aria-label="Edit comment" title="Edit comment">Edit</button>
+            <button type="button" class="mdc-action mdc-action-delete" aria-label="Delete comment" title="Delete comment">Delete</button>
+          </div>
+        </div>
+        <div class="mdc-comment-body">
+          Is the coverage threshold enforced, or just reported? If it blocks the
+          merge we should say so explicitly.
+        </div>
+      </aside>
+
+      <p>
+        After approval, squash-merge the branch. The release notes are generated
+        from the commit subjects, so keep them descriptive.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var toggle = document.getElementById('themeToggle');
+      var body = document.body;
+      var surface = document.getElementById('surface');
+      function apply(theme) {
+        body.setAttribute('data-theme', theme);
+        surface.setAttribute('data-theme', theme);
+        var goingLight = theme === 'dark';
+        toggle.textContent = goingLight ? 'Switch to light theme' : 'Switch to dark theme';
+        toggle.setAttribute('aria-pressed', String(theme === 'light'));
+      }
+      toggle.addEventListener('click', function () {
+        var next = body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        apply(next);
+      });
+    })();
+  </script>
+</body>
+</html>
