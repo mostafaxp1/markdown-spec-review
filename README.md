@@ -1,10 +1,16 @@
 # Markdown Spec Review
 
-A VS Code extension for leaving review comments on the headings and paragraphs
-of a Markdown file. Comments are stored **inline** as HTML comment blocks, so
-they travel with the file and stay invisible in every other Markdown renderer
-(GitHub, npm, etc.). They show up as styled bubbles in VS Code's built-in
-Markdown preview.
+Markdown Spec Review is a VS Code extension for leaving review comments on
+Markdown documents. Comments are stored **inline** as HTML comment blocks, so
+they travel with the file, stay diff-friendly, and remain invisible in other
+Markdown renderers such as GitHub and npm.
+
+The extension gives you two review surfaces:
+
+- VS Code's built-in Markdown preview, where comments render as read-only
+  bubbles.
+- An Interactive Comments View, where you can add, edit, remove, search, and
+  address comments directly from the rendered document.
 
 ## How it works
 
@@ -29,8 +35,10 @@ There are two ways to view and work with comments:
    - **Hover** an existing bubble and use its **Edit** / **Delete** controls
      (Delete asks for a quick confirm).
    - Every change is written straight back into the `.md` as an inline comment
-     block and is fully **undoable** (`Cmd/Ctrl+Z`). The view stays in sync if
-     you also edit the file in the editor.
+     block and is fully **undoable** (`Cmd/Ctrl+Z`). By default the file is
+     also saved after comment edits; turn off `markdownSpecReview.autoSave` if you
+     prefer to keep the document dirty until you save manually. The view stays
+     in sync if you also edit the file in the editor.
    - **Address comments** with an AI coding agent from the bar in the
      bottom-right — see [Address comments with AI](#address-comments-with-ai).
    - **Resolved comments** (any whose body has a `Resolved:` line — the marker
@@ -62,7 +70,7 @@ silent edits.
 - Supported agents: **Claude Code** (`claude`), **Codex** (`codex`),
   **GitHub Copilot CLI** (`copilot`), and **Antigravity** (`antigravity`). The
   chosen agent's CLI must be installed and on your `PATH`, or pointed at via
-  `markdownComments.ai.commands`.
+  `markdownSpecReview.ai.commands`.
 
 While a run is in flight the bar shows a **Stop** button — it terminates the
 headless process (or closes the run's terminal). Whatever the agent had already
@@ -83,8 +91,8 @@ reads and writes it there.
 
 ## Commands
 
-| Command                                               | Default keybinding | What it does                                                                       |
-| ----------------------------------------------------- | ------------------ | ---------------------------------------------------------------------------------- |
+| Command                                                  | Default keybinding | What it does                                                                       |
+| -------------------------------------------------------- | ------------------ | ---------------------------------------------------------------------------------- |
 | **Markdown Spec Review: Add Comment**                    | `Cmd/Ctrl+Alt+M`   | Insert a comment anchored to the current block                                     |
 | **Markdown Spec Review: Edit Comment at Cursor**         | —                  | Edit the body of the comment under the cursor                                      |
 | **Markdown Spec Review: Remove Comment at Cursor**       | —                  | Delete the comment under the cursor                                                |
@@ -117,15 +125,20 @@ This section needs a measurable success metric.
 
 ## Settings
 
-| Setting                        | Default         | Description                                                                         |
-| ------------------------------ | --------------- | ----------------------------------------------------------------------------------- |
-| `markdownComments.author`      | `""`            | Name attached to new comments (falls back to your OS username).                     |
-| `markdownComments.dateFormat`  | `"date"`        | `date`, `datetime`, or `none`.                                                      |
-| `markdownComments.ai.agent`    | `"claude-code"` | Agent for **Address comments**: `claude-code`, `codex`, `copilot`, `antigravity`.   |
-| `markdownComments.ai.runMode`  | `"terminal"`    | Run the agent in a `terminal` (watch & approve) or `headless` (auto-apply).         |
-| `markdownComments.ai.model`    | `""`            | Default model (empty = the agent's own default; also pickable per run in the bar).  |
-| `markdownComments.ai.effort`   | `"medium"`      | Reasoning effort: `low`, `medium`, or `high`.                                       |
-| `markdownComments.ai.commands` | `{}`            | Per-agent executable overrides, e.g. `{ "claude-code": "/usr/local/bin/claude" }`.  |
+| Setting                                    | Default         | Description                                                                        |
+| ------------------------------------------ | --------------- | ---------------------------------------------------------------------------------- |
+| `markdownSpecReview.author`                | `""`            | Name attached to new comments (falls back to your OS username).                    |
+| `markdownSpecReview.dateFormat`            | `"date"`        | `date`, `datetime`, or `none`.                                                     |
+| `markdownSpecReview.autoSave`              | `true`          | Save the Markdown file after adding, editing, or removing a comment.               |
+| `markdownSpecReview.openInViewerByDefault` | `false`         | Automatically open Markdown files in the Interactive Comments View.                |
+| `markdownSpecReview.viewer.fontSize`       | `15`            | Font size, in pixels, for the Interactive Comments View.                           |
+| `markdownSpecReview.viewer.maxWidth`       | `1100`          | Maximum content width in the Interactive Comments View; use `0` for full width.    |
+| `markdownSpecReview.viewer.colorTheme`     | `"vscode"`      | Viewer theme: `vscode`, `light`, `dark`, `light-modern`, or `dark-modern`.         |
+| `markdownSpecReview.ai.agent`              | `"claude-code"` | Agent for **Address comments**: `claude-code`, `codex`, `copilot`, `antigravity`.  |
+| `markdownSpecReview.ai.runMode`            | `"terminal"`    | Run the agent in a `terminal` (watch & approve) or `headless` (auto-apply).        |
+| `markdownSpecReview.ai.model`              | `""`            | Default model (empty = the agent's own default; also pickable per run in the bar). |
+| `markdownSpecReview.ai.effort`             | `"medium"`      | Reasoning effort: `low`, `medium`, or `high`.                                      |
+| `markdownSpecReview.ai.commands`           | `{}`            | Per-agent executable overrides, e.g. `{ "claude-code": "/usr/local/bin/claude" }`. |
 
 ## Develop
 
@@ -136,6 +149,15 @@ npm run compile     # or: npm run watch
 
 Then press **F5** ("Run Extension") to launch an Extension Development Host with
 `example.md` open. Open its preview to see the comment bubbles.
+
+To build and install a local VSIX:
+
+```bash
+npm run rebuild
+```
+
+That command compiles the extension, packages it with `vsce`, and installs the
+generated `.vsix` into VS Code.
 
 ## Known limitations
 

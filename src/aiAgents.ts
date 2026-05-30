@@ -19,7 +19,7 @@
  * NOTE: only the Claude Code invocation is verified against an installed CLI.
  * The Codex / Copilot / Antigravity argv shapes are best-effort defaults based
  * on their documented headless flags; if one drifts, it is a one-line edit here
- * (or the user can repoint the binary with `markdownComments.ai.commands`).
+ * (or the user can repoint the binary with `markdownSpecReview.ai.commands`).
  */
 
 import * as vscode from 'vscode';
@@ -45,7 +45,7 @@ export const EFFORTS: Effort[] = ['low', 'medium', 'high'];
 
 interface AgentMeta {
   label: string;
-  /** Default executable name (overridable via `markdownComments.ai.commands`). */
+  /** Default executable name (overridable via `markdownSpecReview.ai.commands`). */
   bin: string;
   /** Best-effort, curated model list — see detectModels(). */
   curatedModels: string[];
@@ -91,7 +91,7 @@ export interface AiSettings {
 }
 
 function cfg() {
-  return vscode.workspace.getConfiguration('markdownComments');
+  return vscode.workspace.getConfiguration('markdownSpecReview');
 }
 
 export function getAiSettings(): AiSettings {
@@ -137,7 +137,7 @@ export async function isAgentInstalled(agent: AgentId): Promise<boolean> {
  * list-models command today, so detection is necessarily light: we read what
  * we can (e.g. the model named in Codex's config.toml) and merge it ahead of a
  * curated list of well-known models. The user can always pick "Default" or set
- * any string via `markdownComments.ai.model`, so a stale list is never a wall.
+ * any string via `markdownSpecReview.ai.model`, so a stale list is never a wall.
  */
 export async function detectModels(agent: AgentId): Promise<string[]> {
   const curated = AGENTS[agent].curatedModels.slice();

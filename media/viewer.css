@@ -1038,7 +1038,7 @@ body.mdc-popup-open .mdc-toast {
 }
 
 /* ===========================================================================
-   Forced color themes (markdownComments.viewer.colorTheme = light | dark |
+   Forced color themes (markdownSpecReview.viewer.colorTheme = light | dark |
    light-modern | dark-modern). Default ("vscode") adds no class and inherits
    the workbench theme via the --vscode-* variables the base rules above read.
 

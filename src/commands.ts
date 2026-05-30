@@ -94,8 +94,8 @@ async function removeComment(): Promise<void> {
 
 export function registerCommands(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.commands.registerCommand('markdownComments.addComment', addComment),
-    vscode.commands.registerCommand('markdownComments.editComment', editComment),
-    vscode.commands.registerCommand('markdownComments.removeComment', removeComment)
+    vscode.commands.registerCommand('markdownSpecReview.addComment', addComment),
+    vscode.commands.registerCommand('markdownSpecReview.editComment', editComment),
+    vscode.commands.registerCommand('markdownSpecReview.removeComment', removeComment)
   );
 }

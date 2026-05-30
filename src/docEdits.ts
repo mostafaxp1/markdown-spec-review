@@ -40,7 +40,7 @@ export interface CommentFingerprint {
 
 export function getAuthor(): string {
   const configured = vscode.workspace
-    .getConfiguration('markdownComments')
+    .getConfiguration('markdownSpecReview')
     .get<string>('author', '')
     .trim();
   if (configured) {
@@ -59,7 +59,7 @@ function pad(n: number): string {
 
 export function getDate(): string {
   const format = vscode.workspace
-    .getConfiguration('markdownComments')
+    .getConfiguration('markdownSpecReview')
     .get<string>('dateFormat', 'date');
   if (format === 'none') {
     return '';
@@ -86,7 +86,7 @@ export async function maybeAutoSaveComment(doc: vscode.TextDocument): Promise<vo
     return;
   }
   const enabled = vscode.workspace
-    .getConfiguration('markdownComments')
+    .getConfiguration('markdownSpecReview')
     .get<boolean>('autoSave', true);
   if (!enabled) {
     return;

@@ -50,7 +50,7 @@ import {
 
 const panels = new Map<string, CommentViewerPanel>();
 
-const VIEW_TYPE = 'markdownComments.interactiveView';
+const VIEW_TYPE = 'markdownSpecReview.interactiveView';
 
 function getNonce(): string {
   return crypto.randomBytes(16).toString('base64').replace(/[^A-Za-z0-9]/g, '');
@@ -75,7 +75,7 @@ interface ViewerConfig {
 }
 
 function getViewerConfig(): ViewerConfig {
-  const cfg = vscode.workspace.getConfiguration('markdownComments');
+  const cfg = vscode.workspace.getConfiguration('markdownSpecReview');
   const fontSize = Math.max(8, Math.min(cfg.get<number>('viewer.fontSize', 15), 40));
   const maxWidth = Math.max(0, cfg.get<number>('viewer.maxWidth', 1100));
   const theme = cfg.get<string>('viewer.colorTheme', 'vscode') as ColorTheme;
@@ -298,14 +298,14 @@ export class CommentViewerPanel {
     // width / color theme update live without reopening the view.
     vscode.workspace.onDidChangeConfiguration(
       (e) => {
-        if (e.affectsConfiguration('markdownComments')) {
+        if (e.affectsConfiguration('markdownSpecReview')) {
           void this.postUpdate();
         }
         // Changing the agent (or its binary override) changes which models and
         // installed-state the bar should show — re-detect.
         if (
-          e.affectsConfiguration('markdownComments.ai.agent') ||
-          e.affectsConfiguration('markdownComments.ai.commands')
+          e.affectsConfiguration('markdownSpecReview.ai.agent') ||
+          e.affectsConfiguration('markdownSpecReview.ai.commands')
         ) {
           void this.refreshAiInfo();
         }
@@ -1009,7 +1009,7 @@ export class CommentViewerPanel {
     if (!(await isAgentInstalled(agent))) {
       this.postAiStatus(
         'error',
-        `${label} ("${resolveBin(agent)}") was not found on your PATH. Set markdownComments.ai.commands or install it.`,
+        `${label} ("${resolveBin(agent)}") was not found on your PATH. Set markdownSpecReview.ai.commands or install it.`,
         'idle'
       );
       return;

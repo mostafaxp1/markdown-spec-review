@@ -8,13 +8,13 @@ export function activate(context: vscode.ExtensionContext) {
   registerCommands(context);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('markdownComments.openInteractiveView', () =>
+    vscode.commands.registerCommand('markdownSpecReview.openInteractiveView', () =>
       CommentViewerPanel.openReplacing(context, vscode.window.activeTextEditor)
     ),
-    vscode.commands.registerCommand('markdownComments.revertToSource', () =>
+    vscode.commands.registerCommand('markdownSpecReview.revertToSource', () =>
       CommentViewerPanel.revertActive()
     ),
-    vscode.commands.registerCommand('markdownComments.addressComments', () => {
+    vscode.commands.registerCommand('markdownSpecReview.addressComments', () => {
       if (!CommentViewerPanel.addressActive()) {
         vscode.window.showWarningMessage(
           'Markdown Spec Review: open the Interactive Comments View to address comments with AI.'
@@ -23,7 +23,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
     vscode.window.onDidChangeActiveTextEditor((editor) => {
       if (!editor || editor.document.languageId !== 'markdown') return;
-      const cfg = vscode.workspace.getConfiguration('markdownComments');
+      const cfg = vscode.workspace.getConfiguration('markdownSpecReview');
       if (!cfg.get<boolean>('openInViewerByDefault', false)) return;
       if (CommentViewerPanel.hasPanel(editor.document.uri)) return;
       CommentViewerPanel.openReplacing(context, editor);

@@ -33,34 +33,34 @@
     ],
     "commands": [
       {
-        "command": "markdownComments.addComment",
+        "command": "markdownSpecReview.addComment",
         "title": "Add Comment",
         "category": "Markdown Spec Review"
       },
       {
-        "command": "markdownComments.removeComment",
+        "command": "markdownSpecReview.removeComment",
         "title": "Remove Comment at Cursor",
         "category": "Markdown Spec Review"
       },
       {
-        "command": "markdownComments.editComment",
+        "command": "markdownSpecReview.editComment",
         "title": "Edit Comment at Cursor",
         "category": "Markdown Spec Review"
       },
       {
-        "command": "markdownComments.openInteractiveView",
+        "command": "markdownSpecReview.openInteractiveView",
         "title": "Open Interactive Comments View",
         "category": "Markdown Spec Review",
         "icon": "$(comment-discussion)"
       },
       {
-        "command": "markdownComments.revertToSource",
+        "command": "markdownSpecReview.revertToSource",
         "title": "Show Markdown Source",
         "category": "Markdown Spec Review",
         "icon": "$(code)"
       },
       {
-        "command": "markdownComments.addressComments",
+        "command": "markdownSpecReview.addressComments",
         "title": "Address Comments with AI",
         "category": "Markdown Spec Review",
         "icon": "$(sparkle)"
@@ -69,48 +69,48 @@
     "menus": {
       "commandPalette": [
         {
-          "command": "markdownComments.openInteractiveView",
+          "command": "markdownSpecReview.openInteractiveView",
           "when": "editorLangId == markdown"
         },
         {
-          "command": "markdownComments.revertToSource",
-          "when": "activeWebviewPanelId == 'markdownComments.interactiveView'"
+          "command": "markdownSpecReview.revertToSource",
+          "when": "activeWebviewPanelId == 'markdownSpecReview.interactiveView'"
         },
         {
-          "command": "markdownComments.addressComments",
-          "when": "activeWebviewPanelId == 'markdownComments.interactiveView'"
+          "command": "markdownSpecReview.addressComments",
+          "when": "activeWebviewPanelId == 'markdownSpecReview.interactiveView'"
         }
       ],
       "editor/title": [
         {
-          "command": "markdownComments.openInteractiveView",
+          "command": "markdownSpecReview.openInteractiveView",
           "when": "resourceLangId == markdown",
           "group": "navigation@1"
         },
         {
-          "command": "markdownComments.revertToSource",
-          "when": "activeWebviewPanelId == 'markdownComments.interactiveView'",
+          "command": "markdownSpecReview.revertToSource",
+          "when": "activeWebviewPanelId == 'markdownSpecReview.interactiveView'",
           "group": "navigation@1"
         }
       ],
       "editor/context": [
         {
-          "command": "markdownComments.addComment",
+          "command": "markdownSpecReview.addComment",
           "when": "editorLangId == markdown",
           "group": "1_modification@10"
         },
         {
-          "command": "markdownComments.editComment",
+          "command": "markdownSpecReview.editComment",
           "when": "editorLangId == markdown",
           "group": "1_modification@11"
         },
         {
-          "command": "markdownComments.removeComment",
+          "command": "markdownSpecReview.removeComment",
           "when": "editorLangId == markdown",
           "group": "1_modification@12"
         },
         {
-          "command": "markdownComments.openInteractiveView",
+          "command": "markdownSpecReview.openInteractiveView",
           "when": "editorLangId == markdown",
           "group": "navigation@1"
         }
@@ -118,33 +118,33 @@
     },
     "keybindings": [
       {
-        "command": "markdownComments.addComment",
+        "command": "markdownSpecReview.addComment",
         "key": "ctrl+alt+m",
         "mac": "cmd+alt+m",
-        "when": "editorLangId == markdown && editorTextFocus || activeWebviewPanelId == 'markdownComments.interactiveView'"
+        "when": "editorLangId == markdown && editorTextFocus || activeWebviewPanelId == 'markdownSpecReview.interactiveView'"
       },
       {
-        "command": "markdownComments.openInteractiveView",
+        "command": "markdownSpecReview.openInteractiveView",
         "key": "alt+shift+v",
         "mac": "alt+shift+v",
         "when": "editorLangId == markdown && editorTextFocus"
       },
       {
-        "command": "markdownComments.revertToSource",
+        "command": "markdownSpecReview.revertToSource",
         "key": "alt+shift+v",
         "mac": "alt+shift+v",
-        "when": "activeWebviewPanelId == 'markdownComments.interactiveView'"
+        "when": "activeWebviewPanelId == 'markdownSpecReview.interactiveView'"
       }
     ],
     "configuration": {
       "title": "Markdown Spec Review",
       "properties": {
-        "markdownComments.author": {
+        "markdownSpecReview.author": {
           "type": "string",
           "default": "",
           "description": "Name attached to new comments. If empty, falls back to your OS username."
         },
-        "markdownComments.dateFormat": {
+        "markdownSpecReview.dateFormat": {
           "type": "string",
           "enum": [
             "date",
@@ -154,30 +154,30 @@
           "default": "date",
           "description": "Timestamp stored with new comments: date only, full datetime, or none."
         },
-        "markdownComments.autoSave": {
+        "markdownSpecReview.autoSave": {
           "type": "boolean",
           "default": true,
           "description": "Automatically save the Markdown file after adding, editing, or removing a comment. Untitled (never-saved) files are left for you to save manually."
         },
-        "markdownComments.openInViewerByDefault": {
+        "markdownSpecReview.openInViewerByDefault": {
           "type": "boolean",
           "default": false,
           "description": "Automatically open Markdown files in the Interactive Comments View instead of the text editor."
         },
-        "markdownComments.viewer.fontSize": {
+        "markdownSpecReview.viewer.fontSize": {
           "type": "number",
           "default": 15,
           "minimum": 8,
           "maximum": 40,
           "description": "Font size (in pixels) for text in the Interactive Comments View."
         },
-        "markdownComments.viewer.maxWidth": {
+        "markdownSpecReview.viewer.maxWidth": {
           "type": "number",
           "default": 1100,
           "minimum": 0,
           "description": "Maximum width (in pixels) of the content column in the Interactive Comments View. Use 0 for full width."
         },
-        "markdownComments.viewer.colorTheme": {
+        "markdownSpecReview.viewer.colorTheme": {
           "type": "string",
           "enum": [
             "vscode",
@@ -203,7 +203,7 @@
           "default": "vscode",
           "description": "Color scheme for the Interactive Comments View tab only. Lets you read a Markdown file in a fixed light/dark scheme while the rest of VS Code stays on your chosen theme."
         },
-        "markdownComments.ai.agent": {
+        "markdownSpecReview.ai.agent": {
           "type": "string",
           "enum": [
             "claude-code",
@@ -224,9 +224,9 @@
             "Google Antigravity CLI (the `antigravity` command)."
           ],
           "default": "claude-code",
-          "description": "Coding agent used by the \"Address comments\" button to revise the document in response to your review comments. The agent's CLI must be installed and on your PATH (or pointed at via markdownComments.ai.commands)."
+          "description": "Coding agent used by the \"Address comments\" button to revise the document in response to your review comments. The agent's CLI must be installed and on your PATH (or pointed at via markdownSpecReview.ai.commands)."
         },
-        "markdownComments.ai.runMode": {
+        "markdownSpecReview.ai.runMode": {
           "type": "string",
           "enum": [
             "terminal",
@@ -243,12 +243,12 @@
           "default": "terminal",
           "description": "How the \"Address comments\" agent runs."
         },
-        "markdownComments.ai.model": {
+        "markdownSpecReview.ai.model": {
           "type": "string",
           "default": "",
           "description": "Default model for the \"Address comments\" agent. Leave empty to use the agent's own default. You can also pick a model per run from the bar in the Interactive Comments View; the dropdown is populated from the installed agent."
         },
-        "markdownComments.ai.effort": {
+        "markdownSpecReview.ai.effort": {
           "type": "string",
           "enum": [
             "low",
@@ -258,7 +258,7 @@
           "default": "medium",
           "description": "Default reasoning effort for the \"Address comments\" agent. Maps to a native flag where the agent supports one (e.g. Codex's model_reasoning_effort) and to a thinking hint in the prompt otherwise."
         },
-        "markdownComments.ai.commands": {
+        "markdownSpecReview.ai.commands": {
           "type": "object",
           "default": {},
           "additionalProperties": {
