@@ -142,7 +142,10 @@ body {
    .mdc-search-hit is the subtle highlight for every match; the current match
    gets the stronger find-match fill plus an outline so it stands out as you
    step through results. Text color is pinned so matches stay readable. */
-mark.mdc-search-hit {
+/* No horizontal padding: a match can fall mid-word, and 0.15em side padding
+   (inherited from `.mdc-content mark`) would visibly split the word apart. The
+   `.mdc-content` prefix raises specificity above that base rule so this wins. */
+.mdc-content mark.mdc-search-hit {
   padding: 0;
   border-radius: 2px;
   color: var(--vscode-editor-foreground, var(--vscode-foreground));

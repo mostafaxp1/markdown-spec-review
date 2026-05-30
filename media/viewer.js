@@ -837,8 +837,9 @@
   // ---------------------------------------------------------------------------
   // Find-in-comments
   // ---------------------------------------------------------------------------
-  // The slim find bar in the top toolbar highlights query matches inside comment
-  // bubbles and steps through them. Matches are wrapped in <mark> nodes injected
+  // The slim find bar in the top toolbar highlights query matches across the
+  // whole page — document text and comment bubbles — and steps through them.
+  // Matches are wrapped in <mark> nodes injected
   // into the live DOM; clearing the query or a host re-render removes them. The
   // host owns the document, so this is purely a view-side affordance — it never
   // edits content.
@@ -874,10 +875,30 @@
     searchActive = -1;
   }
 
-  // We search comment text + meta only — the bar's placeholder is "Search
-  // comments", and the action buttons / badges shouldn't match.
+  // We search the whole page — the rendered document and every comment — so a
+  // single container (the content root) is enough. Buttons and badges are
+  // skipped per text node in highlightWithin so chrome never matches.
   function searchContainers() {
-    return content.querySelectorAll('.mdc-comment-body, .mdc-comment-meta');
+    return [content];
+  }
+
+  // Elements whose text is interactive chrome (action buttons, resolved badges)
+  // rather than real document/comment content — matches inside them are noise.
+  function isSearchableTextNode(node) {
+    let el = node.parentNode;
+    while (el && el !== content) {
+      if (el.nodeType === 1) {
+        const cls = el.classList;
+        if (
+          el.tagName === 'BUTTON' ||
+          (cls && (cls.contains('mdc-comment-actions') || cls.contains('mdc-resolved-badge')))
+        ) {
+          return false;
+        }
+      }
+      el = el.parentNode;
+    }
+    return true;
   }
 
   // Wrap each case-insensitive occurrence of `lowerQuery` within `root`'s text
@@ -888,7 +909,7 @@
     const textNodes = [];
     let node;
     while ((node = walker.nextNode())) {
-      if (node.nodeValue) {
+      if (node.nodeValue && isSearchableTextNode(node)) {
         textNodes.push(node);
       }
     }
