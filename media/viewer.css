@@ -142,10 +142,7 @@ body {
    .mdc-search-hit is the subtle highlight for every match; the current match
    gets the stronger find-match fill plus an outline so it stands out as you
    step through results. Text color is pinned so matches stay readable. */
-/* No horizontal padding: a match can fall mid-word, and 0.15em side padding
-   (inherited from `.mdc-content mark`) would visibly split the word apart. The
-   `.mdc-content` prefix raises specificity above that base rule so this wins. */
-.mdc-content mark.mdc-search-hit {
+mark.mdc-search-hit {
   padding: 0;
   border-radius: 2px;
   color: var(--vscode-editor-foreground, var(--vscode-foreground));
@@ -163,10 +160,9 @@ mark.mdc-search-hit-current {
    "✓ Resolved" pill in its head, so addressed comments are easy to spot and
    sweep away. --mdc-resolved-accent is overridden per forced theme below. */
 .mdc-comment.mdc-resolved {
-  border-inline-start-color: var(--vscode-charts-green, #2ea043);
-  background:
-    linear-gradient(0deg, rgba(46, 160, 67, 0.12), rgba(46, 160, 67, 0.12)),
-    var(--vscode-textBlockQuote-background, rgba(127, 127, 127, 0.1));
+  border: 1px solid var(--vscode-charts-green, #2ea043);
+  border-inline-start-width: 3px;
+  background: rgba(46, 160, 67, 0.08) !important;
 }
 
 .mdc-resolved-badge {
@@ -178,7 +174,7 @@ mark.mdc-search-hit-current {
   font-weight: 600;
   letter-spacing: 0.02em;
   white-space: nowrap;
-  color: var(--vscode-charts-green, #2ea043);
+  color: #2a8b3c;
   background: rgba(46, 160, 67, 0.16);
 }
 

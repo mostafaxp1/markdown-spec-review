@@ -511,6 +511,9 @@
   backdrop.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
       e.preventDefault();
+      // Handled here while the editor has focus; stop it reaching the global
+      // Escape handler so a single press doesn't also close the search.
+      e.stopPropagation();
       closeModal();
     } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
@@ -837,9 +840,8 @@
   // ---------------------------------------------------------------------------
   // Find-in-comments
   // ---------------------------------------------------------------------------
-  // The slim find bar in the top toolbar highlights query matches across the
-  // whole page — document text and comment bubbles — and steps through them.
-  // Matches are wrapped in <mark> nodes injected
+  // The slim find bar in the top toolbar highlights query matches inside comment
+  // bubbles and steps through them. Matches are wrapped in <mark> nodes injected
   // into the live DOM; clearing the query or a host re-render removes them. The
   // host owns the document, so this is purely a view-side affordance — it never
   // edits content.
@@ -875,30 +877,10 @@
     searchActive = -1;
   }
 
-  // We search the whole page — the rendered document and every comment — so a
-  // single container (the content root) is enough. Buttons and badges are
-  // skipped per text node in highlightWithin so chrome never matches.
+  // We search comment text + meta only — the bar's placeholder is "Search
+  // comments", and the action buttons / badges shouldn't match.
   function searchContainers() {
-    return [content];
-  }
-
-  // Elements whose text is interactive chrome (action buttons, resolved badges)
-  // rather than real document/comment content — matches inside them are noise.
-  function isSearchableTextNode(node) {
-    let el = node.parentNode;
-    while (el && el !== content) {
-      if (el.nodeType === 1) {
-        const cls = el.classList;
-        if (
-          el.tagName === 'BUTTON' ||
-          (cls && (cls.contains('mdc-comment-actions') || cls.contains('mdc-resolved-badge')))
-        ) {
-          return false;
-        }
-      }
-      el = el.parentNode;
-    }
-    return true;
+    return content.querySelectorAll('.mdc-comment-body, .mdc-comment-meta');
   }
 
   // Wrap each case-insensitive occurrence of `lowerQuery` within `root`'s text
@@ -909,7 +891,7 @@
     const textNodes = [];
     let node;
     while ((node = walker.nextNode())) {
-      if (node.nodeValue && isSearchableTextNode(node)) {
+      if (node.nodeValue) {
         textNodes.push(node);
       }
     }
@@ -1078,6 +1060,9 @@
         stepSearch(e.shiftKey ? -1 : 1);
       } else if (e.key === 'Escape') {
         e.preventDefault();
+        // Handled here while the input has focus; stop it reaching the global
+        // Escape handler so the same press doesn't act twice.
+        e.stopPropagation();
         closeSearch();
       }
     });
@@ -1112,6 +1097,23 @@
       } else {
         openSearch();
       }
+    }
+  });
+
+  // Escape pressed while focus is on the page (not inside the comment editor or
+  // the search input, which handle it themselves and stop it here). Dismiss one
+  // thing per press, most transient first: an open comment editor, then the
+  // search bar.
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') {
+      return;
+    }
+    if (!backdrop.hidden) {
+      e.preventDefault();
+      closeModal();
+    } else if (searchIsOpen()) {
+      e.preventDefault();
+      closeSearch();
     }
   });
 
