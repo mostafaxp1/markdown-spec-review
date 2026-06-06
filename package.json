@@ -97,6 +97,20 @@
           "group": "navigation@1"
         }
       ],
+      "explorer/context": [
+        {
+          "command": "markdownSpecReview.openInteractiveView",
+          "when": "resourceLangId == markdown",
+          "group": "navigation@30"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "markdownSpecReview.openInteractiveView",
+          "when": "resourceLangId == markdown",
+          "group": "1_open@30"
+        }
+      ],
       "editor/context": [
         {
           "command": "markdownSpecReview.addComment",

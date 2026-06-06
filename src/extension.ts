@@ -8,8 +8,22 @@ export function activate(context: vscode.ExtensionContext) {
   registerCommands(context);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('markdownSpecReview.openInteractiveView', () =>
-      CommentViewerPanel.openReplacing(context, vscode.window.activeTextEditor)
+    vscode.commands.registerCommand(
+      'markdownSpecReview.openInteractiveView',
+      async (uri?: vscode.Uri) => {
+        // Invoked from the Explorer or an editor-tab context menu, VS Code passes
+        // the right-clicked file's URI — which may not be the active editor (or
+        // open at all). Open it as a text editor first so openReplacing can swap
+        // that tab for the view. With no URI (command palette / keybinding /
+        // title icon) fall back to the active editor.
+        if (uri instanceof vscode.Uri) {
+          const doc = await vscode.workspace.openTextDocument(uri);
+          const editor = await vscode.window.showTextDocument(doc, { preview: false });
+          await CommentViewerPanel.openReplacing(context, editor);
+          return;
+        }
+        await CommentViewerPanel.openReplacing(context, vscode.window.activeTextEditor);
+      }
     ),
     vscode.commands.registerCommand('markdownSpecReview.revertToSource', () =>
       CommentViewerPanel.revertActive()

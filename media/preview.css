@@ -5,9 +5,11 @@
   display: block;
   margin: 0.6em 0 1em;
   padding: 0.55em 0.8em;
-  border-radius: 6px;
-  border-inline-start: 3px solid var(--vscode-textLink-foreground, #3794ff);
-  background: var(--vscode-textBlockQuote-background, rgba(127, 127, 127, 0.1));
+  border-radius: 4px;
+  /* Flat, neutral look: a subtle gray left accent + faint fill rather than the
+     theme's link-blue accent, so comments read as quiet annotations. */
+  border-inline-start: 3px solid var(--vscode-panel-border, rgba(127, 127, 127, 0.4));
+  background: var(--vscode-textBlockQuote-background, rgba(127, 127, 127, 0.08));
   color: var(--vscode-editor-foreground);
   font-size: 0.92em;
   line-height: 1.5;
@@ -24,7 +26,7 @@
 
 .mdc-comment-icon {
   flex: 0 0 auto;
-  color: var(--vscode-textLink-foreground, #3794ff);
+  color: var(--vscode-descriptionForeground);
 }
 
 .mdc-comment-meta {

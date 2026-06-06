@@ -97,13 +97,17 @@
   editBlockBtn.title = 'Edit this block';
   editBlockBtn.setAttribute('aria-label', 'Edit this block');
   editBlockBtn.innerHTML =
-    '<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">' +
+    '<svg viewBox="0 0 16 16" width="9" height="9" aria-hidden="true">' +
     '<path fill="currentColor" d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"/>' +
     '</svg>';
   editBlockBtn.hidden = true;
   document.body.appendChild(editBlockBtn);
 
   let hoverBlock = null;
+  // The most recently hovered block, kept even after the hover clears (on scroll
+  // or when the pointer leaves the document into the page margins) so a
+  // right-click out there still has a block to act on.
+  let lastHoverBlock = null;
   let hoveredEls = [];
 
   function clearHovered() {
@@ -118,6 +122,7 @@
       clearHovered();
     }
     hoverBlock = block;
+    lastHoverBlock = block;
     hoveredEls = [block];
     let el = block.parentElement;
     while (el && el !== content) {
@@ -132,12 +137,12 @@
     const rect = block.getBoundingClientRect();
     const contentRect = content.getBoundingClientRect();
     const top = Math.max(2, rect.top);
-    const left = Math.min(window.innerWidth - 66, Math.max(8, contentRect.right + 14));
+    const left = Math.min(window.innerWidth - 70, Math.max(8, contentRect.right + 14));
     addBtn.style.top = top + 'px';
     addBtn.style.left = left + 'px';
     addBtn.hidden = false;
     editBlockBtn.style.top = top + 'px';
-    editBlockBtn.style.left = (left + 32) + 'px';
+    editBlockBtn.style.left = (left + 28) + 'px';
     editBlockBtn.hidden = false;
   }
 
@@ -160,9 +165,9 @@
   }
 
   content.addEventListener('mouseover', function (e) {
-    if (!backdrop.hidden || !mdEditBackdrop.hidden) {
-      return; // modal open
-    }
+    // Either popup (comment editor or markdown source editor) staying open is
+    // fine: hovering another block lets the user retarget it — the affordance /
+    // menu actions auto-close the current popup first.
     const target = e.target.closest && e.target.closest('[data-source-line]');
     if (target && content.contains(target)) {
       showAffordanceFor(target);
@@ -182,6 +187,15 @@
     if (!block) {
       return;
     }
+    // A popup may already be open (retargeting to a different paragraph or
+    // switching action) — close it first. Any in-progress comment text is
+    // stashed as a draft, so it isn't lost.
+    if (!backdrop.hidden) {
+      closeModal();
+    }
+    if (!mdEditBackdrop.hidden) {
+      closeMdEditor();
+    }
     const sourceEnd = Number(block.getAttribute('data-source-end'));
     const sourceLine = Number(block.getAttribute('data-source-line'));
     hideAffordanceButtons();
@@ -191,6 +205,15 @@
   function startEditForBlock(block) {
     if (!block) {
       return;
+    }
+    // Retargeting from an already-open popup — close it first. A comment draft
+    // is preserved; unsaved markdown source edits are discarded (same as the
+    // editor's Discard button).
+    if (!backdrop.hidden) {
+      closeModal();
+    }
+    if (!mdEditBackdrop.hidden) {
+      closeMdEditor();
     }
     const sourceLine = Number(block.getAttribute('data-source-line'));
     const sourceEnd = Number(block.getAttribute('data-source-end'));
@@ -241,9 +264,6 @@
   }
 
   content.addEventListener('contextmenu', function (e) {
-    if (!backdrop.hidden || !mdEditBackdrop.hidden) {
-      return; // modal open
-    }
     const block = e.target.closest && e.target.closest('[data-source-line]');
     if (!block || !content.contains(block)) {
       return;
@@ -251,6 +271,28 @@
     e.preventDefault();
     hideAffordanceButtons();
     // Capture the selection now — clicking a menu item collapses it.
+    const sel = window.getSelection();
+    menuSelection = sel ? String(sel) : '';
+    showBlockMenu(block, e.clientX, e.clientY);
+  });
+
+  // Right-click in the page margins (outside the rendered document) still opens
+  // the menu, targeting the last hovered block — or, failing that, the block
+  // nearest the top of the viewport.
+  document.addEventListener('contextmenu', function (e) {
+    if (content.contains(e.target)) {
+      return; // handled by the content-level listener above
+    }
+    if (backdrop.contains(e.target) || mdEditBackdrop.contains(e.target)) {
+      return; // right-click inside an open popup — leave it be
+    }
+    const block =
+      lastHoverBlock && lastHoverBlock.isConnected ? lastHoverBlock : pickTargetBlock();
+    if (!block) {
+      return;
+    }
+    e.preventDefault();
+    hideAffordanceButtons();
     const sel = window.getSelection();
     menuSelection = sel ? String(sel) : '';
     showBlockMenu(block, e.clientX, e.clientY);
@@ -505,21 +547,26 @@
   // or the comment bubble being edited (edit) so it's clear what the comment
   // belongs to, even though the preview above stays fully visible.
   let highlightedEl = null;
+  let highlightClass = 'mdc-target';
 
-  function setHighlight(el) {
-    if (highlightedEl === el) {
+  // The comment popup marks its target with 'mdc-target'; the markdown source
+  // editor passes 'mdc-target-edit' for a simpler, differently-colored tint.
+  function setHighlight(el, cls) {
+    const klass = cls || 'mdc-target';
+    if (highlightedEl === el && highlightClass === klass) {
       return;
     }
     clearHighlight();
     if (el && el.classList) {
-      el.classList.add('mdc-target');
+      el.classList.add(klass);
       highlightedEl = el;
+      highlightClass = klass;
     }
   }
 
   function clearHighlight() {
     if (highlightedEl && highlightedEl.classList) {
-      highlightedEl.classList.remove('mdc-target');
+      highlightedEl.classList.remove(highlightClass);
     }
     highlightedEl = null;
   }
@@ -1040,6 +1087,11 @@
     document.body.classList.add('mdc-popup-open');
     const barH = mdEditModalEl.getBoundingClientRect().height;
     document.documentElement.style.setProperty('--mdc-popup-pad', barH + 24 + 'px');
+    // Highlight the block being edited, the same way the comment popup marks its
+    // target, so it's clear which paragraph the source editor belongs to.
+    const targetEl = content.querySelector('[data-source-line="' + sourceLine + '"]');
+    setHighlight(targetEl, 'mdc-target-edit');
+    ensureTargetVisible(targetEl);
     updateMdSaveBtn();
     updateAiBarVisibility();
     mdEditTextarea.focus();
@@ -1050,6 +1102,7 @@
 
   function closeMdEditor() {
     mdEditBackdrop.hidden = true;
+    clearHighlight();
     document.body.classList.remove('mdc-popup-open');
     updateAiBarVisibility();
     restoreAffordance();

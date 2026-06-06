@@ -6,8 +6,6 @@ Put your cursor in any heading or paragraph below and run **Add Comment**
 
 ## Project goals
 
-sdsd
-
 Success is measurable: at least 60% of active users add a comment within
 their first week, and the preview renders comment bubbles in under 100 ms.
 

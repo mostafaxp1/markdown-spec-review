@@ -6,7 +6,7 @@
 
 body {
   margin: 0;
-  padding: 1.6rem 1.6rem 4rem;
+  padding: 1.6rem 3.2rem 4rem;
   font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif);
   font-size: var(--mdc-font-size, 15px);
   line-height: 1.65;
@@ -400,31 +400,63 @@ mark.mdc-search-hit-current {
   border-radius: 999px;
   background: var(--mdc-hover-line, rgba(128, 128, 128, 0.62));
   pointer-events: none;
+  /* Ease the parent-fade (opacity 1 -> 0.55) in after a short delay so quickly
+     sweeping the pointer across nested blocks doesn't flash the faded line. */
+  opacity: 1;
+  transition: opacity 0.8s ease 0.10s;
 }
 
 .mdc-content :is(li, ol)[data-source-line].mdc-hovered:has(li, ul, ol)::after {
   display: none;
 }
 
+/* Nested lists (a ul/ol inside a list item) shouldn't draw their own hover
+   line — the parent item already marks the hovered region. */
+.mdc-content li ul.mdc-hovered::after,
+.mdc-content li ol.mdc-hovered::after {
+  display: none;
+}
+
+/* A loose list stamps a data-source-line on the <li> AND the <p> it wraps, so
+   both would draw a line (at different offsets) — a duplicate for one item.
+   Suppress the inner paragraph's line; the list item already represents it. */
+.mdc-content li > p[data-source-line].mdc-hovered::after {
+  display: none;
+}
+
 .mdc-content :is(li, ol)[data-source-line].mdc-hovered:not(:has(li, ul, ol))::after {
-  left: -22px;
+  left: -30px;
+}
+
+/* Ordered-list items: the "1." / "2." markers reach further left than bullets,
+   so push the hover line out a bit more to clear the numbers. */
+.mdc-content ol > li[data-source-line].mdc-hovered:not(:has(li, ul, ol))::after {
+  left: -30px;
+}
+
+/* Nested lists: a hovered block that wraps a hovered list item/sub-list is a
+   structural parent — fade its line so the deepest (actually hovered) item
+   reads as primary and the parents show only as faint context. Scoped to
+   list nesting (not a plain wrapped paragraph) so a leaf list item stays solid. */
+.mdc-content [data-source-line].mdc-hovered:has(:is(li, ul, ol).mdc-hovered)::after {
+  opacity: 0.45;
 }
 
 /* ---- floating "+" add affordance ---------------------------------------- */
 .mdc-add-affordance {
   position: fixed;
   z-index: 30;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  border: 1px solid var(--vscode-button-border, rgba(127, 127, 127, 0.35));
+  border: 1px solid var(--vscode-button-border, rgba(127, 127, 127, 0.3));
   border-radius: 50%;
   color: var(--vscode-button-foreground, #fff);
   background: var(--vscode-button-background, #0e639c);
@@ -440,7 +472,6 @@ mark.mdc-search-hit-current {
 .mdc-add-affordance:hover {
   opacity: 1;
   background: var(--vscode-button-hoverBackground, #1177bb);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.34);
 }
 
 .mdc-add-affordance:focus-visible {
@@ -609,6 +640,15 @@ body.mdc-theme-dark-modern .mdc-has-draft::before {
    Applied to the hovered block (add) or the comment bubble (edit) while the
    docked editor is open, so the paragraph the comment targets stands out. */
 .mdc-target {
+  border-radius: 4px;
+  background: var(--mdc-target-edit-bg, rgba(46, 160, 67, 0.16));
+  scroll-margin-top: 12px;
+}
+
+/* The markdown source editor's target: a simpler, distinct highlight — a flat
+   green tint with no focus ring, so it reads differently from the comment
+   target above. */
+.mdc-target-edit {
   border-radius: 4px;
   background: var(--mdc-target-bg, var(--vscode-editor-findMatchHighlightBackground, rgba(255, 200, 0, 0.18)));
   box-shadow: 0 0 0 2px var(--mdc-target-ring, var(--vscode-focusBorder, #3794ff));
@@ -1096,9 +1136,11 @@ body.mdc-theme-light .mdc-modal-hint kbd {
   border-color: rgba(128, 128, 128, 0.35);
 }
 body.mdc-theme-light .mdc-content a,
-body.mdc-theme-light .mdc-content a:hover,
-body.mdc-theme-light .mdc-comment-icon {
+body.mdc-theme-light .mdc-content a:hover {
   color: #006ab1;
+}
+body.mdc-theme-light .mdc-comment-icon {
+  color: #717171;
 }
 body.mdc-theme-light .mdc-comment {
   border-inline-start-color: #006ab1;
@@ -1237,9 +1279,11 @@ body.mdc-theme-dark .mdc-modal-hint kbd {
   border-color: rgba(128, 128, 128, 0.35);
 }
 body.mdc-theme-dark .mdc-content a,
-body.mdc-theme-dark .mdc-content a:hover,
-body.mdc-theme-dark .mdc-comment-icon {
+body.mdc-theme-dark .mdc-content a:hover {
   color: #3794ff;
+}
+body.mdc-theme-dark .mdc-comment-icon {
+  color: rgba(204, 204, 204, 0.7);
 }
 body.mdc-theme-dark .mdc-comment {
   border-inline-start-color: #3794ff;
@@ -1375,12 +1419,14 @@ body.mdc-theme-light-modern .mdc-modal-hint kbd {
   border-color: #E5E5E5;
 }
 body.mdc-theme-light-modern .mdc-content a,
-body.mdc-theme-light-modern .mdc-content a:hover,
-body.mdc-theme-light-modern .mdc-comment-icon {
+body.mdc-theme-light-modern .mdc-content a:hover {
   color: #005fb8;
 }
+body.mdc-theme-light-modern .mdc-comment-icon {
+  color: #616161;
+}
 body.mdc-theme-light-modern .mdc-comment {
-  border-inline-start-color: #005fb8;
+  border-inline-start-color: #3794ff;
 }
 body.mdc-theme-light-modern .mdc-content code {
   color: #3B3B3B;
@@ -1519,19 +1565,19 @@ body.mdc-theme-dark-modern {
 
 /* Target-highlight ring / fill per forced theme (default "vscode" inherits the
    --vscode-* lookups in the base .mdc-target rule). */
-body.mdc-theme-light .mdc-target {
+body.mdc-theme-light .mdc-target , body.mdc-theme-light .mdc-target-edit{
   --mdc-target-ring: #0090f1;
   --mdc-target-bg: rgba(0, 144, 241, 0.12);
 }
-body.mdc-theme-dark .mdc-target {
+body.mdc-theme-dark .mdc-target , body.mdc-theme-dark .mdc-target-edit{
   --mdc-target-ring: #007fd4;
   --mdc-target-bg: rgba(0, 127, 212, 0.16);
 }
-body.mdc-theme-light-modern .mdc-target {
+body.mdc-theme-light-modern .mdc-target, body.mdc-theme-light-modern .mdc-target-edit{
   --mdc-target-ring: #005fb8;
   --mdc-target-bg: rgba(0, 95, 184, 0.1);
 }
-body.mdc-theme-dark-modern .mdc-target {
+body.mdc-theme-dark-modern .mdc-target, body.mdc-theme-dark-modern .mdc-target-edit{
   --mdc-target-ring: #0078d4;
   --mdc-target-bg: rgba(0, 120, 212, 0.16);
 }
