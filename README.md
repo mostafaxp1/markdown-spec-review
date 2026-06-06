@@ -1,7 +1,7 @@
 # Markdown Spec Review
 
 Markdown Spec Review is a VS Code extension for leaving review comments on
-Markdown documents. Comments are stored **inline** as HTML comment blocks, so
+Markdown specs and documents. Comments are stored **inline** as HTML comment blocks, so
 they travel with the file, stay diff-friendly, and remain invisible in other
 Markdown renderers such as GitHub and npm.
 
@@ -32,6 +32,13 @@ There are two ways to view and work with comments:
    **`</>` Show Markdown Source** button in its toolbar does the same flip back.
    - **Hover** any heading / paragraph / list item and click the floating
      **+** to add a comment via a popup.
+   - **Mention files** while writing a comment — type **`@`** in the comment
+     popup to find and reference workspace files. A suggestion list filters as
+     you type; use **↑/↓** to move, **Enter** / **Tab** to insert the selected
+     file path, and **Esc** to dismiss.
+   - **Hover** any block and click the floating **✎ (Edit this block)** button
+     to edit that block's raw Markdown source inline, with live syntax
+     highlighting. **`⌘/Ctrl+Enter`** saves, **Esc** discards.
    - **Hover** an existing bubble and use its **Edit** / **Delete** controls
      (Delete asks for a quick confirm).
    - Every change is written straight back into the `.md` as an inline comment

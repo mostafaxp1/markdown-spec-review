@@ -1,8 +1,8 @@
 {
   "name": "markdown-spec-review",
   "displayName": "Markdown Spec Review",
-  "description": "Add review comments to headings and paragraphs in Markdown files. Comments are stored inline (invisible to other renderers) and shown as bubbles in the built-in Markdown preview.",
-  "version": "0.1.0",
+  "description": "Add review comments to headings and paragraphs in Markdown specs and files. Comments are stored inline (invisible to other renderers) and shown as bubbles in the built-in Markdown preview.",
+  "version": "0.2.0",
   "publisher": "mostafaelkady",
   "icon": "media/icon.png",
   "license": "MIT",
